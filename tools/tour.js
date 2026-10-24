@@ -41,6 +41,8 @@ const scenarios = [
   { name: '22-trial-ended-popup', time: at(2026,10,29, 9), keepPopups: true, seed: { profile: { ...profile, startDate: '2026-10-04' }, history: [...week1.slice().reverse(), ...many], 'ach-seen': ['Awakening','Gate Opener','Machine','Level 5'] } },
   { name: '23-home-free-red-gate-locked', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04', trialSeen: true }, history: [...week1.slice().reverse(), ...many] }, scroll: true },
   { name: '24-status-premium-settings', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04', trialSeen: true }, history: [...week1.slice().reverse(), ...many] }, act: async p => { await p.getByRole('tab', { name: 'Status' }).click(); await p.waitForTimeout(500); await p.mouse.move(195, 500); await p.mouse.wheel(0, 1500); }, scroll: true },
+  { name: '24c-status-full-free', height: 3300, time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04', trialSeen: true }, history: [...week1.slice().reverse(), ...many] }, act: async p => { await p.getByRole('tab', { name: 'Status' }).click(); } },
+  { name: '24d-status-full-trial', height: 3300, time: at(2026,10,27, 9), seed: { profile, history: week1.slice(0, 2).reverse() }, act: async p => { await p.getByRole('tab', { name: 'Status' }).click(); } },
   { name: '25-workout-no-equipment', time: at(2026,10,28, 9), seed: { profile: { ...profile, gear: 'none' }, history: [rec('Q', at(2026,10,27,19)), rec('A', at(2026,10,26,9)), rec('Q', at(2026,10,25,19))] }, act: async p => { await p.getByLabel('Accept quest').click(); }, scroll: true },
   { name: '26-home-premium', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04', premium: true, trialSeen: true, rank: 'B' }, history: [...week1.slice().reverse(), ...many] } },
 ];
@@ -50,7 +52,7 @@ const scenarios = [
   const only = process.env.ONLY;
   for (const sc of scenarios) {
     if (only && !sc.name.includes(only)) continue;
-    const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+    const ctx = await b.newContext({ viewport: { width: 390, height: sc.height || 844 }, deviceScaleFactor: 2 });
     const p = await ctx.newPage();
     const errs = []; p.on('pageerror', e => errs.push(e.message));
     await p.clock.install({ time: new Date(sc.time) }); await p.clock.resume();

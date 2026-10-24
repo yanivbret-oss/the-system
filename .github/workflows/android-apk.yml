@@ -1,9 +1,7 @@
-# Builds an installable Android APK on every push to main (and on demand).
+# Builds an installable Android APK on demand (Actions tab, "Run workflow"), so unfinished work does not trigger builds.
 # Each build is published as a GitHub Release, so it can be downloaded straight from the phone.
 name: Android APK
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 permissions:
   contents: write

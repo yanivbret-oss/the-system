@@ -28,7 +28,14 @@
       "expo-font",
       "expo-audio",
       "expo-web-browser",
-      "expo-video"
+      "expo-video",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#59E8FF"
+        }
+      ]
     ],
     "backgroundColor": "#03060D",
     "splash": {

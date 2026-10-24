@@ -6,7 +6,7 @@ export type Rec = {
   exercises: { name: string; rx: string; sec?: number; done: boolean }[];
   score: string; feel: number | null; hard: string; kg?: number;
 };
-export type Profile = { name: string; startDate: string; rank: string; days?: number[]; gear?: Gear; premium?: boolean; trialSeen?: boolean };
+export type Profile = { name: string; startDate: string; rank: string; days?: number[]; gear?: Gear; premium?: boolean; trialSeen?: boolean; notify?: boolean; remindAt?: number };
 export type ItemState = { sec: number; runningSince?: number | null; done?: boolean; sets?: boolean[]; rounds?: number; lastBeepMin?: number; endBeeped?: boolean };
 export type Session = {
   v: 3; key: string; week: number; day: string; startedAt: number | null; endedAt: number | null;

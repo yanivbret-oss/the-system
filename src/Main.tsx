@@ -9,6 +9,7 @@ import {
 } from './logic';
 import { useGame } from './game';
 import { QuestScreen } from './QuestScreen';
+import { askPermission, scheduleAll, REMIND_HOURS, DEFAULT_REMIND } from './notify';
 
 type Tab = 'quest' | 'status' | 'premium' | 'settings';
 
@@ -45,6 +46,10 @@ export function Main({ profile, history, setHistory, onRedGate, onProfile }: { p
   useEffect(() => {
     if (weighDue && !busy && !weighShown.current) { weighShown.current = true; setWeighOpen(true); }
   }, [weighDue, busy]);
+  // phone reminders for the coming week, rebuilt whenever something changes
+  const [asked, setAsked] = useState(false);
+  useEffect(() => { askPermission().catch(() => {}).finally(() => setAsked(true)); }, []);
+  useEffect(() => { if (asked) scheduleAll(profile, history).catch(() => {}); }, [asked, history.length, profile.notify, profile.remindAt, (profile.days || []).join(), profile.gear, profile.premium]);
   if (!s) return null;
 
   const showQuest = inQuest || g.running || (!!s.endedAt && !s.saved);
@@ -565,6 +570,23 @@ function Settings({ g, profile, onProfile }: { g: ReturnType<typeof useGame>; pr
             </Pressable>
           ))}
         </View>
+        <Divider />
+        <Row style={{ justifyContent: 'space-between' }}>
+          <Caps size={10} glow={false} style={{ color: t.muted }}>Notifications</Caps>
+          <Row style={{ gap: 6 }}>
+            <Btn small label="On" on={profile.notify !== false} onPress={() => { askPermission().catch(() => {}); onProfile({ ...profile, notify: true }); }} />
+            <Btn small label="Off" on={profile.notify === false} onPress={() => onProfile({ ...profile, notify: false })} />
+          </Row>
+        </Row>
+        {profile.notify !== false ? (
+          <>
+            <T muted style={{ fontSize: 12 }}>Daily quest reminder</T>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {REMIND_HOURS.map(hr => <Btn key={hr} small label={String(hr).padStart(2, '0') + ':00'} on={(profile.remindAt ?? DEFAULT_REMIND) === hr} onPress={() => onProfile({ ...profile, remindAt: hr })} style={{ flex: 1 }} />)}
+            </View>
+            <T muted style={{ fontSize: 12, lineHeight: 18 }}>Plus a warning at 22:00 if today's quest is not done, and the weekly weigh-in at 08:00.</T>
+          </>
+        ) : null}
       </Win>
     </Appear>
   );

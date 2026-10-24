@@ -111,12 +111,12 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
         <Check on={!!st.done} color={t.good} />
         <View style={{ flex: 1, gap: 2 }}>
           <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <T style={{ fontFamily: F.semi, fontSize: 16, flex: 1, color: st.done ? t.good : t.fg }}>{it.name}</T>
+            <T style={{ fontFamily: F.semi, fontSize: 16, lineHeight: 22, flex: 1, color: st.done ? t.good : t.fg }}>{it.name}</T>
             {it.tag ? <Caps size={10} glow={false} style={{ color: t.muted }}>{it.tag}</Caps> : null}
           </Row>
-          <T glow style={{ fontFamily: F.semi, color: t.bright }}>{rxFor(it, s.week)}</T>
+          <T style={{ fontFamily: F.bold, fontSize: 16, color: t.bright }}>{rxFor(it, s.week)}</T>
           {it.steps ? it.steps.map(x => <T key={x} muted style={{ fontSize: 13, lineHeight: 20 }}>{'· ' + x}</T>) : null}
-          {it.note ? <T muted style={{ fontSize: 13, lineHeight: 20 }}>{it.note}</T> : null}
+          {it.note ? <T muted style={{ fontSize: 14, lineHeight: 20 }}>{it.note}</T> : null}
         </View>
       </Row>
       {nSets ? (

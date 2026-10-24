@@ -95,44 +95,51 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
         </Appear>
       ) : null}
 
-      <Appear delay={80}>
-        <Win title="DAILY QUEST">
-          <View style={{ alignItems: 'center', gap: 2 }}>
-            <Caps size={11} glow={false} style={{ color: t.muted }}>{todayW ? 'Today’s training' : 'Rest day'}</Caps>
-            <T glow style={{ fontFamily: F.semi, fontSize: 18, textAlign: 'center', color: t.bright }}>{todayW ? WORKOUTS[todayW].name : QUESTS.Q.title}</T>
-          </View>
-          <Caps size={12} style={{ textAlign: 'center' }}>Goals</Caps>
-          <View style={{ gap: 6 }}>
-            {goals.map(([name, rx]) => (
-              rx.length <= 18 ? (
-                <Row key={name} style={{ justifyContent: 'space-between' }}>
-                  <T style={{ flex: 1, fontSize: 14 }}>{name}</T>
-                  <T glow style={{ fontSize: 14, fontFamily: F.semi, color: qDone ? t.good : t.bright }}>{qDone ? '[Complete]' : '[' + rx + ']'}</T>
-                </Row>
-              ) : (
-                <View key={name}>
-                  <T style={{ fontSize: 14 }}>{name}</T>
-                  <T glow style={{ fontSize: 13, lineHeight: 19, fontFamily: F.semi, color: qDone ? t.good : t.bright }}>{qDone ? '[Complete]' : '[' + rx + ']'}</T>
-                </View>
-              )
-            ))}
-          </View>
-          <Divider />
-          <Row style={{ gap: 16 }}>
-            <Ring size={92} progress={qDone ? 1 : left / 86400} color={qDone ? t.good : undefined}>
-              {qDone ? <Text style={{ color: t.good, fontSize: 28, fontFamily: F.bold }}>✓</Text>
-                : <><Num size={15}>{pad(h) + ':' + pad(m)}</Num><Text style={{ color: t.muted, fontFamily: F.medium, fontSize: 10 }}>{pad(sec) + 's'}</Text></>}
-            </Ring>
-            <View style={{ flex: 1, gap: 6 }}>
-              {qDone
-                ? <T glow style={{ color: t.good, fontFamily: F.semi }}>Quest complete. The System has recorded it.</T>
-                : <T style={{ color: t.warn, fontSize: 13, lineHeight: 19 }}>WARNING: failing to complete the daily quest by midnight will result in a penalty.</T>}
-              <T muted style={{ fontSize: 12 }}>{'Reward: ' + (XP[qKey] || 0) + ' XP'}</T>
+      {qDone ? (
+        <Appear delay={80}>
+          <View style={{ borderWidth: 1, borderColor: 'rgba(89,232,255,0.45)', backgroundColor: 'rgba(89,232,255,0.07)', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 14, boxShadow: `0 0 12px ${t.glow}` }}>
+            <View style={{ width: 34, height: 34, borderWidth: 1, borderColor: t.good, alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ color: t.good, fontFamily: F.bold, fontSize: 18 }}>✓</Text>
             </View>
-          </Row>
-          {!qDone ? <Btn primary big label="Accept quest" onPress={() => open(qKey)} /> : null}
-        </Win>
-      </Appear>
+            <View style={{ flex: 1 }}>
+              <Caps size={11} color={t.good}>Daily quest cleared</Caps>
+              <Text style={{ color: t.fg, fontFamily: F.semi, fontSize: 15, marginTop: 2 }}>{todayW ? WORKOUTS[todayW].name : QUESTS.Q.title}</Text>
+            </View>
+            <Text style={{ color: t.muted, fontFamily: F.semi, fontSize: 12 }}>{'+' + (XP[qKey] || 0) + ' XP'}</Text>
+          </View>
+        </Appear>
+      ) : (
+        <Appear delay={80}>
+          <Win title="DAILY QUEST">
+            <View style={{ alignItems: 'center', gap: 2 }}>
+              <Caps size={11} glow={false} style={{ color: t.muted }}>{todayW ? 'Today’s training' : 'Rest day'}</Caps>
+              <Text style={{ fontFamily: F.bold, fontSize: 20, textAlign: 'center', color: t.bright }}>{todayW ? WORKOUTS[todayW].name : QUESTS.Q.title}</Text>
+            </View>
+            <View style={{ gap: 8 }}>
+              {goals.map(([name, rx], i) => (
+                <View key={name} style={{ flexDirection: 'row', gap: 12, paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: t.line, backgroundColor: 'rgba(0, 0, 0, 0.3)' }}>
+                  <Text style={{ color: t.accent, fontFamily: F.bold, fontSize: 13, width: 20, marginTop: 1 }}>{String(i + 1).padStart(2, '0')}</Text>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={{ color: t.fg, fontFamily: F.semi, fontSize: 15, lineHeight: 21 }}>{name}</Text>
+                    <Text style={{ color: t.bright, fontFamily: F.bold, fontSize: 15, lineHeight: 21 }}>{rx}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+            <Row style={{ gap: 16 }}>
+              <Ring size={84} progress={left / 86400}>
+                <Num size={15}>{pad(h) + ':' + pad(m)}</Num>
+                <Text style={{ color: t.muted, fontFamily: F.medium, fontSize: 10 }}>{pad(sec) + 's'}</Text>
+              </Ring>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={{ color: t.warn, fontFamily: F.semi, fontSize: 13, lineHeight: 19 }}>Complete it by midnight, or face the penalty zone.</Text>
+                <Text style={{ color: t.muted, fontFamily: F.medium, fontSize: 12 }}>{'Reward: ' + (XP[qKey] || 0) + ' XP'}</Text>
+              </View>
+            </Row>
+            <Btn primary big label="Accept quest" onPress={() => open(qKey)} />
+          </Win>
+        </Appear>
+      )}
 
       {showSecret ? (
         <Appear delay={160}>

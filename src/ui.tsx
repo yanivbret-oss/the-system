@@ -14,7 +14,7 @@ const glowText = (c: string, r = 10): TextStyle => ({ textShadowColor: c, textSh
 // Body text with the System's soft glow
 export function T({ style, glow, muted, ...p }: TextProps & { glow?: boolean; muted?: boolean }) {
   const t = useT();
-  return <Text {...p} style={[{ color: muted ? t.muted : t.fg, fontFamily: F.medium, fontSize: 15, lineHeight: 23 }, glow && glowText(t.textGlow, 8), style]} />;
+  return <Text {...p} style={[{ color: muted ? t.muted : t.fg, fontFamily: F.medium, fontSize: 15, lineHeight: 23 }, glow && glowText(t.textGlow, 4), style]} />;
 }
 
 // Spaced capitals, as in the System's "NOTIFICATION" box

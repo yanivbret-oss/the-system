@@ -10,7 +10,7 @@ import {
 import { useGame } from './game';
 import { QuestScreen } from './QuestScreen';
 
-type Tab = 'quest' | 'status';
+type Tab = 'quest' | 'status' | 'premium' | 'settings';
 
 export function Main({ profile, history, setHistory, onRedGate, onProfile }: { profile: Profile; history: Rec[]; setHistory: (h: Rec[]) => void; onRedGate: (on: boolean) => void; onProfile: (p: Profile) => void }) {
   const g = useGame(profile, history, setHistory);
@@ -23,7 +23,7 @@ export function Main({ profile, history, setHistory, onRedGate, onProfile }: { p
   const premium = isPremium(profile, g.today);
   useEffect(() => {
     if (premium || profile.trialSeen) return;
-    g.notify({ title: 'TRIAL ENDED', tone: 'gold', lines: ['Your ' + TRIAL_DAYS + '-day premium trial has ended.', 'The Red Gate and ranks above ' + FREE_RANK_CAP + ' are now sealed.', 'Unlock premium in Status to keep the full System.'] });
+    g.notify({ title: 'TRIAL ENDED', tone: 'gold', lines: ['Your ' + TRIAL_DAYS + '-day premium trial has ended.', 'The Red Gate and ranks above ' + FREE_RANK_CAP + ' are now sealed.', 'Open the Premium tab to keep the full System.'] });
     onProfile({ ...profile, trialSeen: true });
   }, [premium]);
   if (!s) return null;
@@ -37,7 +37,9 @@ export function Main({ profile, history, setHistory, onRedGate, onProfile }: { p
         <>
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}>
             {tab === 'quest' ? <QuestTab g={g} profile={profile} history={history} open={open} />
-              : <StatusTab g={g} profile={profile} history={history} onProfile={onProfile} />}
+              : tab === 'status' ? <StatusTab profile={profile} history={history} />
+              : tab === 'premium' ? <PremiumWin g={g} profile={profile} />
+              : <Settings g={g} profile={profile} onProfile={onProfile} />}
           </ScrollView>
           <TabBar tab={tab} setTab={setTab} />
         </>
@@ -49,7 +51,7 @@ export function Main({ profile, history, setHistory, onRedGate, onProfile }: { p
 
 function TabBar({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   const t = useT();
-  const items: [Tab, string][] = [['quest', 'Quests'], ['status', 'Status']];
+  const items: [Tab, string][] = [['quest', 'Quests'], ['status', 'Status'], ['premium', 'Premium'], ['settings', 'Settings']];
   return (
     <View style={{ flexDirection: 'row', borderTopWidth: 1, borderColor: t.line, backgroundColor: 'rgba(2, 6, 17, 0.9)' }}>
       {items.map(([k, label]) => {
@@ -57,7 +59,7 @@ function TabBar({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
         return (
           <Pressable key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: 'center', paddingVertical: 14 }}>
             <View style={{ position: 'absolute', top: -1, left: '25%', right: '25%', height: 2, backgroundColor: on ? t.bright : 'transparent', boxShadow: on ? `0 0 10px 1px ${t.railGlow}` : undefined }} />
-            <Caps size={12} color={on ? t.bright : t.muted} glow={on}>{label}</Caps>
+            <Caps size={10} color={k === 'premium' ? t.gold : on ? t.bright : t.muted} glow={on} style={{ letterSpacing: 1.5, opacity: k === 'premium' && !on ? 0.75 : 1 }}>{label}</Caps>
           </Pressable>
         );
       })}
@@ -285,7 +287,7 @@ function WeighIn({ g, last }: { g: ReturnType<typeof useGame>; last?: number }) 
 }
 
 // ---------- STATUS: the player's window, stats, weight, achievements
-function StatusTab({ g, profile, history, onProfile }: { g: ReturnType<typeof useGame>; profile: Profile; history: Rec[]; onProfile: (p: Profile) => void }) {
+function StatusTab({ profile, history }: { profile: Profile; history: Rec[] }) {
   const t = useT();
   const p = player(history), today = new Date();
   const premium = isPremium(profile, today);
@@ -377,14 +379,12 @@ function StatusTab({ g, profile, history, onProfile }: { g: ReturnType<typeof us
           </View>
         </Win>
       </Appear>
-      <PremiumWin g={g} profile={profile} />
-      <Settings g={g} profile={profile} onProfile={onProfile} />
       <History history={history} />
     </>
   );
 }
 
-const PREMIUM_NOTICE = { title: 'PREMIUM', tone: 'gold' as Tone, lines: ['This gate is sealed for free players.', 'Premium unlocks the Red Gate, ranks up to S and a plan that adapts to you every week.', 'Open Status to see the premium plan.'] };
+const PREMIUM_NOTICE = { title: 'PREMIUM', tone: 'gold' as Tone, lines: ['This gate is sealed for free players.', 'Premium unlocks the Red Gate, ranks up to S and a plan that adapts to you every week.', 'Open the Premium tab to see the plan.'] };
 
 function PremiumTag({ text }: { text: string }) {
   const t = useT();
@@ -396,44 +396,82 @@ function PremiumTag({ text }: { text: string }) {
 }
 
 // What premium unlocks, and the trial state
-const PERKS: [string, boolean][] = [
-  ['Daily quest, 3 gates a week, penalty zone', false],
-  ['Levels, grades and ranks up to ' + FREE_RANK_CAP, false],
-  ['The Red Gate, a new one every week', true],
-  ['Ranks B, A and S', true],
-  ['A plan that adapts to your reports every week', true],
-  ['Switch equipment any time: none, home kit or gym', true],
-  ['Monthly progress report', true],
+const FREE_PERKS = ['Daily quest and penalty zone', '3 gates a week on your days', 'Levels, grades and ranks up to ' + FREE_RANK_CAP];
+const PAID_PERKS: [string, string][] = [
+  ['The Red Gate', 'The hardest gate, new every week. Double XP.'],
+  ['Ranks B, A and S', 'Keep climbing past rank ' + FREE_RANK_CAP + '.'],
+  ['A plan that adapts', 'Every gate adjusts to how your last ones went.'],
+  ['Any equipment, any time', 'Switch between none, home kit and gym.'],
+  ['Monthly progress report', 'Strength, streaks and body, side by side.'],
 ];
 function PremiumWin({ g, profile }: { g: ReturnType<typeof useGame>; profile: Profile }) {
-  const t = useT(), today = new Date(), left = trialLeft(profile, today);
+  const t = useT(), today = new Date(), left = trialLeft(profile, today), on = !!profile.premium || left > 0;
+  const [plan, setPlan] = useState<'year' | 'month'>('year');
+  const plans: ['year' | 'month', string, string, string][] = [['year', 'Yearly', '$17.99', '$1.50 a month · save 50%'], ['month', 'Monthly', '$2.99', 'Cancel any time']];
   return (
-    <Appear delay={180}>
-      <Win title="PREMIUM" icon="★" tone="gold">
-        <T style={{ textAlign: 'center', fontFamily: F.semi, fontSize: 16, color: t.gold }}>
-          {profile.premium ? 'Premium is active' : left ? 'Free trial · ' + left + (left === 1 ? ' day' : ' days') + ' left' : 'The System learns you'}
-        </T>
-        <View style={{ gap: 8 }}>
-          {PERKS.map(([label, paid]) => (
-            <Row key={label} style={{ gap: 10 }}>
-              {paid ? <Lock color={profile.premium || left ? t.good : t.gold} size={12} /> : <Text style={{ color: t.good, fontFamily: F.bold, fontSize: 13, width: 12 }}>✓</Text>}
-              <T style={{ fontSize: 13, flex: 1, color: paid ? t.fg : t.muted }}>{label}</T>
-              {paid ? <Caps size={8} glow={false} style={{ color: t.gold }}>Premium</Caps> : <Caps size={8} glow={false} style={{ color: t.muted }}>Free</Caps>}
+    <>
+      <Appear>
+        <Win title="PREMIUM" icon="★" tone="gold">
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <Text style={{ color: t.gold, fontFamily: F.bold, fontSize: 22, textAlign: 'center' }}>The System learns you</Text>
+            <Caps size={10} glow={false} style={{ color: on ? t.good : t.muted }}>
+              {profile.premium ? 'Premium is active' : left ? 'Free trial · ' + left + (left === 1 ? ' day' : ' days') + ' left' : 'You are on the free plan'}
+            </Caps>
+          </View>
+          <Divider />
+          <Caps size={10} glow={false} style={{ color: t.gold }}>Premium unlocks</Caps>
+          <View style={{ gap: 14 }}>
+            {PAID_PERKS.map(([title, sub]) => (
+              <Row key={title} style={{ gap: 12, alignItems: 'flex-start' }}>
+                <View style={{ width: 28, height: 28, borderWidth: 1, borderColor: 'rgba(255,201,77,0.55)', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,201,77,0.08)' }}>
+                  {on ? <Text style={{ color: t.gold, fontFamily: F.bold, fontSize: 13 }}>✓</Text> : <Lock color={t.gold} size={12} />}
+                </View>
+                <View style={{ flex: 1, gap: 1 }}>
+                  <T style={{ fontFamily: F.semi, fontSize: 15, color: t.bright }}>{title}</T>
+                  <T muted style={{ fontSize: 13, lineHeight: 18 }}>{sub}</T>
+                </View>
+              </Row>
+            ))}
+          </View>
+        </Win>
+      </Appear>
+
+      {profile.premium ? null : (
+        <Appear delay={80}>
+          <View style={{ gap: 10 }}>
+            <Row style={{ gap: 10, alignItems: 'stretch' }}>
+              {plans.map(([k, name, price, sub]) => {
+                const sel = plan === k;
+                return (
+                  <Pressable key={k} onPress={() => setPlan(k)} accessibilityRole="radio" accessibilityState={{ checked: sel }} accessibilityLabel={name}
+                    style={{ flex: 1, padding: 14, gap: 4, alignItems: 'center', borderWidth: 1, borderColor: sel ? t.gold : t.line,
+                      backgroundColor: sel ? 'rgba(255,201,77,0.1)' : 'rgba(4,10,24,0.7)', boxShadow: sel ? '0 0 14px rgba(255,201,77,0.35)' : undefined }}>
+                    {k === 'year' ? <View style={{ position: 'absolute', top: -9, backgroundColor: t.gold, paddingHorizontal: 6, paddingVertical: 1 }}><Caps size={8} glow={false} style={{ color: '#1a1200' }}>Best value</Caps></View> : null}
+                    <Caps size={10} glow={false} style={{ color: sel ? t.gold : t.muted }}>{name}</Caps>
+                    <Num size={24} color={sel ? t.gold : t.fg}>{price}</Num>
+                    <T muted style={{ fontSize: 11, textAlign: 'center' }}>{sub}</T>
+                  </Pressable>
+                );
+              })}
             </Row>
-          ))}
-        </View>
-        {profile.premium ? null : (
-          <>
-            <Divider />
-            <Row style={{ justifyContent: 'center', gap: 16 }}>
-              <View style={{ alignItems: 'center' }}><Num size={20} color={t.gold}>$2.99</Num><Caps size={8} glow={false} style={{ color: t.muted }}>per month</Caps></View>
-              <View style={{ alignItems: 'center' }}><Num size={20} color={t.gold}>$17.99</Num><Caps size={8} glow={false} style={{ color: t.muted }}>per year · save 50%</Caps></View>
-            </Row>
-            <Btn gold big label="Unlock premium" onPress={() => g.notify({ title: 'PREMIUM', tone: 'gold', lines: ['Payments open with the Google Play release.', 'Until then, every feature stays visible here.'] })} />
-          </>
-        )}
-      </Win>
-    </Appear>
+            <Btn gold big label={left ? 'Keep premium' : 'Unlock premium'} onPress={() => g.notify({ title: 'PREMIUM', tone: 'gold', lines: ['Payments open with the Google Play release.', 'Until then, every feature stays visible here.'] })} />
+          </View>
+        </Appear>
+      )}
+
+      <Appear delay={140}>
+        <Win title="FREE PLAN" icon="i">
+          <View style={{ gap: 8 }}>
+            {FREE_PERKS.map(x => (
+              <Row key={x} style={{ gap: 12 }}>
+                <View style={{ width: 28, alignItems: 'center' }}><Text style={{ color: t.good, fontFamily: F.bold, fontSize: 13 }}>✓</Text></View>
+                <T style={{ fontSize: 14, flex: 1 }}>{x}</T>
+              </Row>
+            ))}
+          </View>
+        </Win>
+      </Appear>
+    </>
   );
 }
 

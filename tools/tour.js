@@ -1,6 +1,7 @@
 // Screenshot tour of every screen and state. Usage: node tools/tour.js <baseUrl> <outDir>
 // Seeds on-device storage (localStorage on web) and fixes the clock for each scenario.
 const { chromium } = require('playwright');
+const DEMO_SRC = require('../assets/demos/sources.json');
 const [base = 'http://localhost:8767', out = 'shots'] = process.argv.slice(2);
 require('fs').mkdirSync(out, { recursive: true });
 
@@ -45,6 +46,8 @@ const scenarios = [
   { name: '24c-settings-free', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04', trialSeen: true }, history: [...week1.slice().reverse(), ...many] }, act: async p => { await p.getByRole('tab', { name: 'Settings' }).click(); } },
   { name: '24d-status-full', height: 2700, time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04', trialSeen: true }, history: [...week1.slice().reverse(), ...many] }, act: async p => { await p.getByRole('tab', { name: 'Status' }).click(); } },
   { name: '25-workout-no-equipment', time: at(2026,10,28, 9), seed: { profile: { ...profile, gear: 'none' }, history: [rec('Q', at(2026,10,27,19)), rec('A', at(2026,10,26,9)), rec('Q', at(2026,10,25,19))] }, act: async p => { await p.getByLabel('Accept quest').click(); }, scroll: true },
+  { name: '27-daily-quest-demos', height: 1500, time: at(2026,10,27, 19), seed: { profile, history: [rec('A', at(2026,10,26,9)), rec('Q', at(2026,10,25,19))], session: sess('Q', at(2026,10,27), { counts: { push: 20 } }) }, act: async p => { await p.getByLabel('Accept quest').click(); await p.waitForTimeout(2500); } },
+  { name: '28-workout-demos', height: 1300, time: at(2026,10,28, 9, 20), seed: { profile, session: sess('B', at(2026,10,28), { startedAt: at(2026,10,28,9,0), active: 'b4', items: { warm: { sec: 480, done: true }, b1: { sec: 300, done: true }, b2: { sec: 300, done: true }, b3: { sec: 300, done: true }, b4: { sec: 0, runningSince: at(2026,10,28,9,19), sets: [true] } } }) }, act: async p => { await p.waitForTimeout(2500); } },
   { name: '26-home-premium', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04', premium: true, trialSeen: true, rank: 'B' }, history: [...week1.slice().reverse(), ...many] } },
 ];
 
@@ -56,6 +59,8 @@ const scenarios = [
     const ctx = await b.newContext({ viewport: { width: 390, height: sc.height || 844 }, deviceScaleFactor: 2 });
     const p = await ctx.newPage();
     const errs = []; p.on('pageerror', e => errs.push(e.message));
+    // demo loops: serve local copies (DEMO_DIR holds <move>.webm, which headless Chromium can play)
+    if (process.env.DEMO_DIR) await p.route('**/*.mp4', r => { const k = Object.entries(DEMO_SRC).find(([, u]) => u === r.request().url()); return k ? r.fulfill({ path: `${process.env.DEMO_DIR}/${k[0]}.webm`, contentType: 'video/webm' }) : r.continue(); });
     await p.clock.install({ time: new Date(sc.time) }); await p.clock.resume();
     await p.addInitScript(seed => { localStorage.clear(); for (const [k, v] of Object.entries(seed || {})) localStorage.setItem(k, JSON.stringify(v)); }, sc.seed || {});
     await p.goto(base); await p.waitForTimeout(1500);

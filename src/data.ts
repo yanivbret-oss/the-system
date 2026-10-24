@@ -1,5 +1,4 @@
-// Program content, ported from the web version of the System (index.html).
-// rx: one string, or [week1, week2, week3, week4]
+// Program content. rx: one string, or [week1, week2, week3, week4] of the 4-week cycle.
 
 export type Item = {
   id: string;
@@ -12,71 +11,68 @@ export type Item = {
   emom?: boolean;
   finisher?: boolean;
 };
-export type Workout = { name: string; tab: string; when: string; day: number; items: Item[] };
+export type Workout = { name: string; short: string; day: number; items: Item[] };
 export type WorkoutKey = 'A' | 'B' | 'C' | 'D';
-export type Key = WorkoutKey | 'Q' | 'P' | 'W' | 'S';
 
-export const DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+export const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const WARMUP: Item = {
-  id: 'warm', name: 'חימום', tag: '8 דקות', rx: ["5 דק' הליכה בשיפוע + 2 סבבים"],
-  steps: ['10 גובלט סקוואט קל', '10 משיכות גומיה לצדדים', '5 תולעים (inchworm)'],
+  id: 'warm', name: 'Warm-up', tag: '8 min', rx: ['5 min incline walk + 2 rounds'],
+  steps: ['10 light goblet squats', '10 band pull-aparts', '5 inchworms'],
 };
 
 export const WORKOUTS: Record<WorkoutKey, Workout> = {
-  A: { name: 'רגליים + קטלבל', tab: 'רגליים', when: 'שני', day: 1, items: [
+  A: { name: 'Legs + Kettlebell', short: 'Legs', day: 1, items: [
     WARMUP,
-    { id: 'a1', name: 'גובלט סקוואט, טמפו 3 שניות ירידה', rx: ['4 × 12', '5 × 12', "5 × 12, מנוחה 45 ש'", '3 × 10'], note: "מנוחה 60 ש'. תחליף: סקוואט עם 2 דאמבלים" },
-    { id: 'a2', name: 'בולגרי ספליט סקוואט, דאמבלים 8 ק"ג', rx: ['3 × 10 לכל רגל', '4 × 10 לכל רגל', '4 × 12 לכל רגל', '2 × 10 לכל רגל'], note: "מנוחה 60 ש'. תחליף: מכרעים לאחור" },
-    { id: 'a3', name: 'דדליפט רומני על רגל אחת, קטלבל', rx: ['3 × 10 לכל רגל', '3 × 12 לכל רגל', '4 × 12 לכל רגל', '2 × 10 לכל רגל'], note: 'תחליף: גשר ירכיים על רגל אחת' },
-    { id: 'a4', name: 'EMOM סווינג קטלבל', rx: ["10 דק', 15 בכל דקה", "10 דק', 17 בכל דקה", "10 דק', 20 בכל דקה", "6 דק', 15 בכל דקה"], countdown: [600, 600, 600, 360], emom: true },
-    { id: 'a5', name: 'פיניש: 3 סבבים לזמן', rx: ["200 מ' ריצה, 15 גובלט, 10 ברפי"], note: 'הזמן נמדד אוטומטית', finisher: true },
+    { id: 'a1', name: 'Goblet squat, 3s lowering', rx: ['4 × 12', '5 × 12', '5 × 12, 45s rest', '3 × 10'], note: 'Rest 60s. Swap: squat holding 2 dumbbells' },
+    { id: 'a2', name: 'Bulgarian split squat', rx: ['3 × 10 each leg', '4 × 10 each leg', '4 × 12 each leg', '2 × 10 each leg'], note: 'Rest 60s. Swap: reverse lunges' },
+    { id: 'a3', name: 'Single-leg Romanian deadlift', rx: ['3 × 10 each leg', '3 × 12 each leg', '4 × 12 each leg', '2 × 10 each leg'], note: 'Swap: single-leg glute bridge' },
+    { id: 'a4', name: 'Kettlebell swing EMOM', rx: ['10 min, 15 every minute', '10 min, 17 every minute', '10 min, 20 every minute', '6 min, 15 every minute'], countdown: [600, 600, 600, 360], emom: true },
+    { id: 'a5', name: 'Finisher: 3 rounds for time', rx: ['200 m run, 15 goblet squats, 10 burpees'], note: 'Timed automatically', finisher: true },
   ]},
-  B: { name: 'פלג עליון + מתח', tab: 'עליון + מתח', when: 'רביעי', day: 3, items: [
+  B: { name: 'Upper Body + Pull-ups', short: 'Upper', day: 3, items: [
     WARMUP,
-    { id: 'b1', name: 'EMOM מתח', rx: ["8 דק', 2 בכל דקה", "8 דק', 2-3 לסירוגין", "8 דק', 3 בכל דקה", "6 דק', 2 בכל דקה"], countdown: [480, 480, 480, 360], emom: true, note: 'תחליף: מתח עם גומיה' },
-    { id: 'b2', name: 'מתח שלילי (ירידה בת 5 שניות)', rx: ['3 × 3', '3 × 4', '4 × 4', '2 × 3'], note: "מנוחה 90 ש'" },
-    { id: 'b3', name: 'חתירה ב־TRX', rx: ['4 × 12', '4 × 14', '5 × 12, רגליים קדימה', '3 × 10'], note: "מנוחה 60 ש'" },
-    { id: 'b4', name: 'שכיבות סמיכה', rx: ['4 × מקסימום פחות 2', '4 × מקסימום פחות 2', '5 × מקסימום פחות 2', '3 × 10'], note: 'תחליף: שכיבות סמיכה ב־TRX' },
-    { id: 'b5', name: 'לחיצת כתף ביד אחת, כרע אחת', rx: ['3 × 10 לכל יד', '3 × 12 לכל יד', '4 × 12 לכל יד', '2 × 10 לכל יד'], note: 'תחליף: לחיצה עם גומיה' },
-    { id: 'b6', name: 'פיניש: AMRAP 8 דקות', rx: ['5 מתח (גומיה מותרת), 10 שכיבות, 15 סווינג'], countdown: [480, 480, 480, 360], note: 'לחץ "סבב הושלם" בסוף כל סבב', finisher: true },
+    { id: 'b1', name: 'Pull-up EMOM', rx: ['8 min, 2 every minute', '8 min, alternate 2 and 3', '8 min, 3 every minute', '6 min, 2 every minute'], countdown: [480, 480, 480, 360], emom: true, note: 'Swap: band-assisted pull-ups' },
+    { id: 'b2', name: 'Negative pull-ups (5s down)', rx: ['3 × 3', '3 × 4', '4 × 4', '2 × 3'], note: 'Rest 90s' },
+    { id: 'b3', name: 'TRX row', rx: ['4 × 12', '4 × 14', '5 × 12, feet forward', '3 × 10'], note: 'Rest 60s' },
+    { id: 'b4', name: 'Push-ups', rx: ['4 × max minus 2', '4 × max minus 2', '5 × max minus 2', '3 × 10'], note: 'Swap: TRX push-ups' },
+    { id: 'b5', name: 'Half-kneeling single-arm press', rx: ['3 × 10 each arm', '3 × 12 each arm', '4 × 12 each arm', '2 × 10 each arm'], note: 'Swap: band press' },
+    { id: 'b6', name: 'Finisher: 8 min AMRAP', rx: ['5 pull-ups (band ok), 10 push-ups, 15 swings'], countdown: [480, 480, 480, 360], note: 'Tap "Round done" after each round', finisher: true },
   ]},
-  C: { name: 'ריצה + סבבים', tab: 'ריצה + סבבים', when: 'שישי', day: 5, items: [
+  C: { name: 'Run + Rounds', short: 'Run', day: 5, items: [
     WARMUP,
-    { id: 'c1', name: 'אינטרוולים במסילה', rx: ['6 × (דקה מהיר / דקה הליכה)', '8 × (דקה מהיר / דקה הליכה)', '10 × (דקה מהיר / דקה הליכה)', '5 × (דקה מהיר / דקה הליכה)'], countdown: [720, 960, 1200, 600], emom: true, note: 'RPE 8 במהיר. רשום את המהירות ונסה להעלות ב־0.5' },
-    { id: 'c2', name: 'פיניש: AMRAP 12 דקות', rx: ["10 סווינג, 10 חתירות TRX, 10 תראסטרים, 200 מ' ריצה"], countdown: [720, 720, 720, 480], note: 'לחץ "סבב הושלם" בסוף כל סבב', finisher: true },
+    { id: 'c1', name: 'Treadmill intervals', rx: ['6 × (1 min fast / 1 min walk)', '8 × (1 min fast / 1 min walk)', '10 × (1 min fast / 1 min walk)', '5 × (1 min fast / 1 min walk)'], countdown: [720, 960, 1200, 600], emom: true, note: 'Fast = RPE 8. Note your speed and add 0.5 next time' },
+    { id: 'c2', name: 'Finisher: 12 min AMRAP', rx: ['10 swings, 10 TRX rows, 10 thrusters, 200 m run'], countdown: [720, 720, 720, 480], note: 'Tap "Round done" after each round', finisher: true },
   ]},
-  D: { name: 'Red Gate', tab: 'Red Gate', when: 'שבת', day: 6, items: [
+  D: { name: 'Red Gate', short: 'Red Gate', day: 6, items: [
     WARMUP,
-    { id: 'd1', name: "צ'יפר לזמן, מקסימום 30 דק'", rx: ["50 סווינג, 40 גובלט, 30 שכיבות, 20 חתירות TRX, 10 ברפי, 800 מ' ריצה"], note: 'הזמן נמדד אוטומטית', finisher: true },
+    { id: 'd1', name: 'Chipper for time, 30 min cap', rx: ['50 swings, 40 goblet squats, 30 push-ups, 20 TRX rows, 10 burpees, 800 m run'], note: 'Timed automatically', finisher: true },
   ]},
 };
 export const ORDER: WorkoutKey[] = ['A', 'B', 'C', 'D'];
-export const KEY_NAMES: Record<string, string> = { Q: 'משימה יומית', P: 'משימת עונש', W: 'שקילה', S: 'משימה נסתרת' };
+export const KEY_NAMES: Record<string, string> = { Q: 'Daily Quest', P: 'Penalty Quest', W: 'Weigh-in', S: 'Secret Quest' };
 
-// Counter-style quests (daily quest and penalty quest), shown as a System window, not a workout
-export type Goal = { id: string; label: string; target: number; steps?: number[]; timer?: boolean; how: string };
+// Counter-style quests: the daily quest on rest days, and the penalty quest
+export type Goal = { id: string; label: string; target: number; unit?: string; steps?: number[]; timer?: boolean; how: string };
 export const QUESTS = {
   Q: {
-    head: '[ משימה יומית ]', title: 'הכנה להיות חזק',
-    lead: (trainDay: boolean) => trainDay ? 'היום יש אימון, אז המשימה קלה: רק להעיר את הגוף. שומרים כוח לאימון.' : 'יום בלי אימון, אז המשימה המלאה. אפשר לפרק לאורך היום.',
-    warn: 'אזהרה: אי השלמת המשימה עד חצות תוביל לעונש.',
-    goals: (w: number, trainDay: boolean): Goal[] => trainDay ? [
-      { id: 'push', label: 'שכיבות סמיכה', target: 10, steps: [1, 5, 10], how: 'q2' },
-      { id: 'squat', label: 'סקוואטים', target: 15, steps: [1, 5, 10], how: 'q3' },
-    ] : [
-      { id: 'push', label: 'שכיבות סמיכה', target: [20, 25, 30, 20][w - 1], steps: [1, 5, 10], how: 'q2' },
-      { id: 'squat', label: 'סקוואטים', target: [30, 40, 50, 30][w - 1], steps: [1, 5, 10], how: 'q3' },
-      { id: 'plank', label: 'פלאנק (שניות)', target: [45, 60, 75, 45][w - 1], timer: true, how: 'q4' },
+    title: 'Preparation to Become Strong',
+    lead: 'A rest day, so the full quest. Split it up across the day if you like.',
+    warn: 'Failing to complete the daily quest by midnight will result in a penalty.',
+    goals: (w: number): Goal[] => [
+      { id: 'push', label: 'Push-ups', target: [20, 25, 30, 20][w - 1], steps: [1, 5, 10], how: 'q2' },
+      { id: 'squat', label: 'Squats', target: [30, 40, 50, 30][w - 1], steps: [1, 5, 10], how: 'q3' },
+      { id: 'plank', label: 'Plank', unit: 's', target: [45, 60, 75, 45][w - 1], timer: true, how: 'q4' },
     ],
   },
   P: {
-    head: '[ אזור עונש ]', title: 'משימת עונש',
-    lead: () => 'המשימה היומית של אתמול לא הושלמה. המערכת לא סולחת.',
-    warn: 'אין XP על משימת עונש.',
+    title: 'Penalty Quest',
+    lead: "Yesterday's daily quest was not completed. The System does not forgive.",
+    warn: 'No XP is awarded for a penalty quest.',
     goals: (): Goal[] => [
-      { id: 'swing', label: 'סווינג קטלבל', target: 100, steps: [5, 10], how: 'p1' },
-      { id: 'burpee', label: 'ברפי', target: 30, steps: [1, 5], how: 'p2' },
+      { id: 'swing', label: 'Kettlebell swings', target: 100, steps: [5, 10], how: 'p1' },
+      { id: 'burpee', label: 'Burpees', target: 30, steps: [1, 5], how: 'p2' },
     ],
   },
 };
@@ -84,25 +80,25 @@ export const QUESTS = {
 export const XP: Record<string, number> = { Q: 30, A: 100, B: 100, C: 100, D: 200, P: 0, W: 20, S: 50 };
 export const XP_PER_LEVEL = 300;
 
-// How-to: Hebrew cues + an English YouTube search for a demo video
+// How-to cues + a YouTube search for a demo video
 export const MOVES: Record<string, [string, string, string]> = {
-  goblet: ['גובלט סקוואט', 'מחזיקים את הקטלבל צמוד לחזה בשתי ידיים. רגליים ברוחב כתפיים, יורדים עם ישבן אחורה ולמטה עד שהמרפקים נוגעים בברכיים, גב זקוף, עקבים על הרצפה.', 'goblet squat kettlebell form'],
-  bandpull: ['משיכת גומיה לצדדים', 'מחזיקים גומיה בשתי ידיים מול החזה, ידיים ישרות. מותחים אותה לצדדים עד שהיא נוגעת בחזה, מקרבים שכמות, וחוזרים לאט.', 'band pull apart'],
-  inchworm: ['תולעת (inchworm)', 'מעמידה מתכופפים וכפות הידיים לרצפה. הולכים עם הידיים קדימה עד שכיבת סמיכה, ואז הולכים עם הרגליים חזרה לידיים ונעמדים.', 'inchworm exercise'],
-  bulgarian: ['בולגרי ספליט סקוואט', 'רגל אחורית מונחת על כיסא או ספה מאחוריך. יורדים ישר למטה עד שהברך האחורית כמעט נוגעת ברצפה, ועולים בדחיפה דרך העקב של הרגל הקדמית.', 'bulgarian split squat dumbbell'],
-  revlunge: ['מכרע לאחור', 'צעד גדול אחורה, יורדים עד שהברך האחורית כמעט ברצפה, וחוזרים לעמידה. קל יותר על הברכיים מהבולגרי.', 'reverse lunge'],
-  slrdl: ['דדליפט רומני על רגל אחת', 'עומדים על רגל אחת, קטלבל ביד הנגדית. מתכופפים מהמותן עם גב ישר, הרגל החופשית עולה אחורה, עד שמרגישים מתיחה בירך האחורית. עולים בכיווץ ישבן.', 'single leg romanian deadlift kettlebell'],
-  swing: ['סווינג קטלבל', 'תנועה מהמותן, לא סקוואט. דוחפים את הישבן אחורה, הקטלבל עובר בין הרגליים, ואז זריקת אגן חזקה קדימה שמעלה אותו לגובה החזה. הידיים רק מחזיקות.', 'russian kettlebell swing form'],
-  burpee: ['ברפי', 'מעמידה ידיים לרצפה, קופצים לשכיבת סמיכה, חזה לרצפה, חוזרים עם הרגליים לידיים, וקפיצה למעלה עם מחיאת כף מעל הראש.', 'burpee proper form'],
-  pullup: ['מתח', 'אחיזה רחבה מעט מהכתפיים, כפות הידיים קדימה. מתחילים מתלייה מלאה, מושכים עד שהסנטר מעל המוט, יורדים בשליטה עד הסוף.', 'strict pull up form'],
-  negative: ['מתח שלילי', 'קופצים או עולים על כיסא כך שהסנטר מעל המוט. יורדים הכי לאט שאפשר, 5 שניות, עד ידיים ישרות. בונה כוח למתח מלא.', 'negative pull ups'],
-  trxrow: ['חתירה ב־TRX', 'אוחזים בידיות, נשענים אחורה עם גוף ישר כמו קרש. מושכים את החזה לידיים ומקרבים שכמות. ככל שהרגליים קדימה יותר, קשה יותר.', 'TRX row'],
-  pushup: ['שכיבת סמיכה', 'ידיים מעט רחבות מהכתפיים, גוף ישר מראש עד עקב. חזה כמעט לרצפה, מרפקים בזווית של כ־45 מעלות מהגוף, ודוחפים חזרה.', 'push up proper form'],
-  press: ['לחיצת כתף ביד אחת בכרע', 'כורעים על ברך אחת, דאמבל ביד של אותו צד כמו הברך שעל הרצפה. לוחצים ישר למעלה עד יד ישרה, בלי להתקשת בגב. בטן מכווצת.', 'half kneeling single arm dumbbell press'],
-  thruster: ['תראסטר עם דאמבלים', 'דאמבלים על הכתפיים, סקוואט מלא, ובעלייה ממשיכים בתנועה אחת ללחיצה מעל הראש.', 'dumbbell thruster'],
-  intervals: ['אינטרוולים במסילה', 'דקה ריצה מהירה (קשה לדבר, RPE 8), ודקה הליכה. רושמים את המהירות בריצה, ומנסים להעלות ב־0.5 כל שבוע.', 'treadmill interval running beginner'],
-  deepsquat: ['סקוואט עמוק איטי', 'יורדים לסקוואט הכי עמוק שנוח, עקבים על הרצפה, נשארים 2 שניות למטה ועולים לאט. אפשר להחזיק בדלת לאיזון.', 'deep squat hold mobility'],
-  plank: ['פלאנק', 'על האמות והבהונות, גוף ישר מראש עד עקב. מכווצים בטן וישבן, לא מורידים את האגן ולא מרימים את הישבן.', 'plank proper form'],
+  goblet: ['Goblet squat', 'Hold the kettlebell close to your chest with both hands. Feet shoulder-width apart. Sit back and down until your elbows touch your knees, chest up, heels down.', 'goblet squat kettlebell form'],
+  bandpull: ['Band pull-apart', 'Hold a band in front of your chest with straight arms. Pull it apart until it touches your chest, squeeze your shoulder blades, return slowly.', 'band pull apart'],
+  inchworm: ['Inchworm', 'From standing, fold forward and put your hands on the floor. Walk your hands out to a push-up position, then walk your feet back to your hands and stand up.', 'inchworm exercise'],
+  bulgarian: ['Bulgarian split squat', 'Rear foot on a chair or couch behind you. Drop straight down until the back knee nearly touches the floor, then drive up through the front heel.', 'bulgarian split squat dumbbell'],
+  revlunge: ['Reverse lunge', 'Take a big step back, lower until the back knee nearly touches the floor, return to standing. Easier on the knees than the Bulgarian.', 'reverse lunge'],
+  slrdl: ['Single-leg Romanian deadlift', 'Stand on one leg, kettlebell in the opposite hand. Hinge at the hips with a flat back as the free leg rises behind you, until you feel a hamstring stretch. Squeeze your glute to stand.', 'single leg romanian deadlift kettlebell'],
+  swing: ['Kettlebell swing', 'A hip hinge, not a squat. Push your hips back, let the bell pass between your legs, then snap your hips forward to float it to chest height. Arms just hold on.', 'russian kettlebell swing form'],
+  burpee: ['Burpee', 'Hands to the floor, jump back to a push-up, chest to the floor, jump your feet back to your hands, and jump up with a clap overhead.', 'burpee proper form'],
+  pullup: ['Pull-up', 'Grip slightly wider than shoulders, palms forward. Start from a full hang, pull until your chin clears the bar, lower under control all the way.', 'strict pull up form'],
+  negative: ['Negative pull-up', 'Jump or step up so your chin is over the bar. Lower as slowly as you can, 5 seconds, to straight arms. Builds strength for full pull-ups.', 'negative pull ups'],
+  trxrow: ['TRX row', 'Hold the handles and lean back with your body straight as a plank. Pull your chest to your hands and squeeze your shoulder blades. Feet further forward makes it harder.', 'TRX row'],
+  pushup: ['Push-up', 'Hands slightly wider than shoulders, body straight from head to heels. Chest nearly to the floor, elbows about 45° from your body, push back up.', 'push up proper form'],
+  press: ['Half-kneeling single-arm press', 'Kneel on one knee with the dumbbell on the same side as the down knee. Press straight up to a straight arm without arching your back. Brace your core.', 'half kneeling single arm dumbbell press'],
+  thruster: ['Dumbbell thruster', 'Dumbbells on your shoulders, full squat, and as you stand press them overhead in one motion.', 'dumbbell thruster'],
+  intervals: ['Treadmill intervals', 'One minute fast (hard to talk, RPE 8), one minute walking. Note your fast speed and try to add 0.5 every week.', 'treadmill interval running beginner'],
+  deepsquat: ['Squat', 'Feet shoulder-width, sit as deep as is comfortable with heels down, chest up, and stand back up. Hold a door frame for balance if needed.', 'bodyweight squat form'],
+  plank: ['Plank', 'On forearms and toes, body straight from head to heels. Brace your abs and glutes; do not let your hips sag or pike up.', 'plank proper form'],
 };
 export const HOW: Record<string, string[]> = {
   warm: ['goblet', 'bandpull', 'inchworm'], a1: ['goblet'], a2: ['bulgarian', 'revlunge'], a3: ['slrdl'], a4: ['swing'], a5: ['goblet', 'burpee'],
@@ -112,11 +108,11 @@ export const HOW: Record<string, string[]> = {
 };
 
 export const SECRETS = [
-  '10 מתח נוספים היום, מפוזרים איך שבא לך',
-  '100 סווינג לאורך היום, בכל סט כמה שאתה רוצה',
-  'עלה ורד 5 קומות במדרגות פעמיים, בלי לעצור',
-  '50 ברפי לזמן',
-  'תלייה על מוט המתח: 3 דקות מצטבר',
-  '200 סקוואטים לאורך היום',
-  'ריצה של 2 ק"מ, מהר ממה שנוח לך',
+  '10 extra pull-ups today, spread out however you like',
+  '100 kettlebell swings across the day, any set size',
+  'Climb 5 flights of stairs twice without stopping',
+  '50 burpees for time',
+  'Hang from the pull-up bar: 3 minutes total',
+  '200 squats across the day',
+  'Run 2 km, faster than feels comfortable',
 ];

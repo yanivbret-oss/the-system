@@ -81,7 +81,11 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
 
   return (
     <>
-      <TopBar profile={profile} level={p.level} />
+      <View style={{ paddingTop: 4, gap: 2 }}>
+        <Caps size={10} glow={false} style={{ color: t.muted }}>{DAYS[today.getDay()] + ' · cycle week ' + g.week + ' / 4'}</Caps>
+        <Caps size={20} color={t.bright} style={{ letterSpacing: 6 }}>The System</Caps>
+      </View>
+      <HomeStatus profile={profile} history={history} today={today} />
       <WeekStrip history={history} profile={profile} today={today} />
 
       {penalty ? (
@@ -113,18 +117,8 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
           <Win title="DAILY QUEST">
             <View style={{ alignItems: 'center', gap: 2 }}>
               <Caps size={11} glow={false} style={{ color: t.muted }}>{todayW ? 'Today’s training' : 'Rest day'}</Caps>
-              <Text style={{ fontFamily: F.bold, fontSize: 20, textAlign: 'center', color: t.bright }}>{todayW ? WORKOUTS[todayW].name : QUESTS.Q.title}</Text>
-            </View>
-            <View style={{ gap: 8 }}>
-              {goals.map(([name, rx], i) => (
-                <View key={name} style={{ flexDirection: 'row', gap: 12, paddingVertical: 10, paddingHorizontal: 12, borderWidth: 1, borderColor: t.line, backgroundColor: 'rgba(0, 0, 0, 0.3)' }}>
-                  <Text style={{ color: t.accent, fontFamily: F.bold, fontSize: 13, width: 20, marginTop: 1 }}>{String(i + 1).padStart(2, '0')}</Text>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={{ color: t.fg, fontFamily: F.semi, fontSize: 15, lineHeight: 21 }}>{name}</Text>
-                    <Text style={{ color: t.bright, fontFamily: F.bold, fontSize: 15, lineHeight: 21 }}>{rx}</Text>
-                  </View>
-                </View>
-              ))}
+              <Text style={{ fontFamily: F.bold, fontSize: 22, textAlign: 'center', color: t.bright }}>{todayW ? WORKOUTS[todayW].name : QUESTS.Q.title}</Text>
+              <Text style={{ fontFamily: F.medium, fontSize: 13, color: t.muted, marginTop: 2 }}>{goals.length + (todayW ? (goals.length === 1 ? ' exercise' : ' exercises') : ' goals')}</Text>
             </View>
             <Row style={{ gap: 16 }}>
               <Ring size={84} progress={left / 86400}>
@@ -156,45 +150,54 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
 
       <View style={{ gap: 10, marginTop: 4 }}>
         <Caps size={12} style={{ color: t.muted }} glow={false}>Gates this week</Caps>
-        {ORDER.map(k => {
-          const w = WORKOUTS[k], cleared = history.some(x => x.key === k && new Date(x.createdAt) >= weekStart(today));
-          const isRed = k === 'D';
-          return (
-            <Pressable key={k} onPress={() => open(k)} style={({ pressed }) => ({ borderWidth: 1, borderColor: isRed ? 'rgba(255,45,79,0.6)' : t.line, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12,
-              backgroundColor: pressed ? 'rgba(150,215,255,0.1)' : 'rgba(4,10,24,0.6)', boxShadow: isRed ? `0 0 12px ${t.warnGlow}` : undefined })}>
-              <View style={{ width: 42, alignItems: 'center' }}>
-                <Caps size={11} glow={false} style={{ color: isRed ? t.warn : t.muted }}>{DAYS[w.day].slice(0, 3)}</Caps>
-              </View>
-              <View style={{ flex: 1 }}>
-                <T style={{ fontFamily: F.semi, color: isRed ? t.warn : t.fg }}>{w.name}</T>
-                <T muted style={{ fontSize: 12 }}>{w.items.length + ' exercises · ' + XP[k] + ' XP'}</T>
-              </View>
-              {cleared ? <Caps size={10} color={t.good}>Cleared</Caps> : <Caps size={14} glow={false} style={{ color: t.muted }}>›</Caps>}
-            </Pressable>
-          );
-        })}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+          {ORDER.map(k => {
+            const w = WORKOUTS[k], cleared = history.some(x => x.key === k && new Date(x.createdAt) >= weekStart(today));
+            const isRed = k === 'D', isToday = k === todayW;
+            return (
+              <Pressable key={k} onPress={() => open(k)} style={({ pressed }) => ({ width: '47%', flexGrow: 1, borderWidth: 1, paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center', gap: 4,
+                borderColor: isRed ? 'rgba(255,45,79,0.65)' : isToday ? t.edge : t.line,
+                backgroundColor: pressed ? 'rgba(150,215,255,0.12)' : cleared ? 'rgba(89,232,255,0.07)' : 'rgba(4,10,24,0.6)',
+                boxShadow: isRed ? `0 0 12px ${t.warnGlow}` : isToday ? `0 0 12px ${t.glow}` : undefined })}>
+                <Text style={{ color: isRed ? t.warn : t.bright, fontFamily: F.bold, fontSize: 16 }}>{w.short}</Text>
+                <Caps size={10} glow={false} style={{ color: cleared ? t.good : isRed ? t.warn : t.muted }}>{cleared ? '✓ Cleared' : DAYS[w.day]}</Caps>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
     </>
   );
 }
 
-function TopBar({ profile, level }: { profile: Profile; level: number }) {
-  const t = useT();
+// The player's window, compact, at the top of the home screen
+function HomeStatus({ profile, history, today }: { profile: Profile; history: Rec[]; today: Date }) {
+  const t = useT(), p = player(history);
   return (
-    <Row style={{ justifyContent: 'space-between', paddingTop: 4 }}>
-      <View>
-        <Caps size={20} color={t.bright} style={{ letterSpacing: 6 }}>The System</Caps>
-        <T muted style={{ fontSize: 12 }}>{'Player: ' + profile.name}</T>
-      </View>
-      <Row style={{ gap: 6 }}>
-        <View style={{ borderWidth: 1, borderColor: t.edge, paddingHorizontal: 10, paddingVertical: 4, boxShadow: `0 0 10px ${t.glow}` }}>
-          <Caps size={11} color={t.bright}>{'Lv. ' + level}</Caps>
-        </View>
-        <View style={{ borderWidth: 1, borderColor: t.edge, width: 34, alignItems: 'center', paddingVertical: 4, boxShadow: `0 0 10px ${t.glow}` }}>
-          <Caps size={11} color={t.bright}>{profile.rank}</Caps>
-        </View>
-      </Row>
-    </Row>
+    <Appear>
+      <Win title="STATUS" icon="i" pad={16}>
+        <Row style={{ justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <View>
+            <Caps size={10} glow={false} style={{ color: t.muted }}>{'Player: ' + profile.name}</Caps>
+            <Text style={{ color: t.bright, fontFamily: F.bold, fontSize: 28, lineHeight: 34 }}>{'Level ' + p.level}</Text>
+          </View>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Caps size={10} glow={false} style={{ color: t.muted }}>Rank</Caps>
+            <Num size={28} color={t.accent}>{profile.rank}</Num>
+          </View>
+        </Row>
+        <Meter value={p.into / p.need} height={7} />
+        <Text style={{ color: t.muted, fontFamily: F.medium, fontSize: 12, marginTop: -6 }}>{(p.need - p.into) + ' XP to level ' + (p.level + 1)}</Text>
+        <Row style={{ gap: 6 }}>
+          {([[p.str, 'STR'], [p.end, 'VIT'], [p.agi, 'AGI'], [streak(history, today), 'STREAK']] as [number, string][]).map(([v, l]) => (
+            <View key={l} style={{ flex: 1, borderWidth: 1, borderColor: t.line, paddingVertical: 8, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.25)' }}>
+              <Num size={18}>{v}</Num>
+              <Caps size={9} glow={false} style={{ color: t.muted, letterSpacing: 1.5 }}>{l}</Caps>
+            </View>
+          ))}
+        </Row>
+      </Win>
+    </Appear>
   );
 }
 

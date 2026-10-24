@@ -1,0 +1,26 @@
+# Copies the exercise demo loops from the generator's CDN into the repo, so the app can bundle them
+name: fetch-demos
+on:
+  push:
+    branches: [main]
+    paths: [assets/demos/sources.json]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download missing demos
+        run: |
+          for k in $(jq -r 'keys[]' assets/demos/sources.json); do
+            f=assets/demos/$k.mp4
+            [ -f "$f" ] || curl -fsSL "$(jq -r --arg k "$k" '.[$k]' assets/demos/sources.json)" -o "$f"
+          done
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/demos
+          git diff --cached --quiet || (git commit -m "Fetch exercise demo loops" && git push)

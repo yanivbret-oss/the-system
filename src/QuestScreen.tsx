@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, Linking } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { View, Text, TextInput, Pressable, ScrollView, ScrollViewInstance, Linking } from 'react-native';
 import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Header, useT } from './ui';
 import { F } from './theme';
 import { WORKOUTS, QUESTS, XP, MOVES, HOW, Item, WorkoutKey } from './data';
@@ -12,6 +12,14 @@ type Game = ReturnType<typeof useGame>;
 export function QuestScreen({ g, onBack }: { g: Game; onBack: () => void }) {
   const s = g.s!;
   const isCounter = s.key === 'Q' || s.key === 'P';
+  const scroll = useRef<ScrollViewInstance>(null);
+  const ys = useRef<Record<string, number>>({});
+  const listY = useRef(0);
+  // keep the exercise in progress on screen, under the sticky timer bar
+  useEffect(() => {
+    const target = s.active ? ys.current[s.active] : s.endedAt && !s.saved ? ys.current.report : undefined;
+    if (target !== undefined) setTimeout(() => scroll.current?.scrollTo({ y: Math.max(0, listY.current + target - 96), animated: true }), 400);
+  }, [s.active, s.endedAt]);
   return (
     <View style={{ flex: 1 }}>
       <Row style={{ paddingHorizontal: 16, paddingTop: 10, justifyContent: 'space-between' }}>
@@ -20,10 +28,10 @@ export function QuestScreen({ g, onBack }: { g: Game; onBack: () => void }) {
         </Pressable>
         <Caps size={11} glow={false} style={{ color: useT().muted }}>{'Cycle week ' + s.week + ' / 4'}</Caps>
       </Row>
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 14 }} stickyHeaderIndices={isCounter ? undefined : [1]}>
+      <ScrollView ref={scroll} contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 14 }} stickyHeaderIndices={isCounter ? undefined : [1]}>
         {isCounter ? <CounterQuest g={g} /> : <WorkoutTop g={g} />}
         {isCounter ? <View /> : <SessionBar g={g} />}
-        {isCounter ? <View /> : <WorkoutItems g={g} />}
+        {isCounter ? <View /> : <View onLayout={e => { listY.current = e.nativeEvent.layout.y; }}><WorkoutItems g={g} ys={ys.current} /></View>}
       </ScrollView>
     </View>
   );
@@ -53,7 +61,10 @@ function SessionBar({ g }: { g: Game }) {
     <View style={{ backgroundColor: t.bg, paddingVertical: 10, borderBottomWidth: 1, borderColor: t.line, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
       <View>
         <Num size={30}>{s.startedAt ? fmt(((s.endedAt || Date.now()) - s.startedAt) / 1000) : '00:00'}</Num>
-        <Caps size={10} glow={false} style={{ color: t.muted }}>{done + ' / ' + W.items.length + ' cleared'}</Caps>
+        <Row style={{ gap: 3, marginTop: 4 }}>
+          {W.items.map(i => <View key={i.id} style={{ width: 14, height: 4, backgroundColor: s.items[i.id]?.done ? t.good : s.active === i.id ? t.bright : t.dim }} />)}
+          <Caps size={9} glow={false} style={{ color: t.muted, marginLeft: 4 }}>{done + '/' + W.items.length}</Caps>
+        </Row>
       </View>
       {!s.startedAt ? <Btn primary label="Start quest" onPress={g.actions.start} />
         : !s.endedAt ? <Btn label="End quest" onPress={g.actions.end} />
@@ -71,14 +82,15 @@ function Check({ on, color }: { on: boolean; color: string }) {
   );
 }
 
-function WorkoutItems({ g }: { g: Game }) {
+function WorkoutItems({ g, ys }: { g: Game; ys: Record<string, number> }) {
   const t = useT(), s = g.s!, W = WORKOUTS[s.key as WorkoutKey];
   const [hard, setHard] = useState('');
   return (
     <View style={{ gap: 12 }}>
-      {W.items.map(it => <ItemCard key={it.id} g={g} it={it} s={s} />)}
+      {W.items.map(it => <View key={it.id} onLayout={e => { ys[it.id] = e.nativeEvent.layout.y; }}><ItemCard g={g} it={it} s={s} /></View>)}
       {s.endedAt && !s.saved ? (
-        <Appear>
+        <Appear style={{}}>
+          <View onLayout={e => { ys.report = e.nativeEvent.layout.y; }} />
           <Win title="QUEST REPORT">
             <Row style={{ justifyContent: 'space-between' }}>
               <View><Caps size={10} glow={false} style={{ color: t.muted }}>Time</Caps><Num size={24}>{fmt((s.endedAt - s.startedAt!) / 1000)}</Num></View>
@@ -104,6 +116,17 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
   const sec = itemSec(st), cd = cdFor(it, s.week);
   const timer = cd ? (sec >= cd ? "TIME'S UP" : fmt(cd - sec)) : sec ? fmt(sec) : '';
   const live = !!s.startedAt && !s.endedAt;
+  if (st.done && !active) {
+    return (
+      <View style={{ borderWidth: 1, borderColor: 'rgba(89,232,255,0.3)', backgroundColor: 'rgba(89,232,255,0.05)', paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <Check on color={t.good} />
+        <Text numberOfLines={1} style={{ flex: 1, color: t.good, fontFamily: F.semi, fontSize: 14 }}>{it.name}</Text>
+        {sec ? <Num size={13} color={t.muted}>{fmt(sec)}</Num> : null}
+        {live ? <Pressable onPress={() => g.actions.undoItem(it.id)} hitSlop={10}><Caps size={9} glow={false} style={{ color: t.muted }}>Undo</Caps></Pressable> : null}
+      </View>
+    );
+  }
+  const emomMin = it.emom && cd ? Math.min(Math.floor(sec / 60) + 1, cd / 60) : 0;
   return (
     <View style={{ borderWidth: 1, borderColor: active ? t.edge : t.line, padding: 14, gap: 10, backgroundColor: active ? 'rgba(40, 110, 200, 0.12)' : 'rgba(4, 10, 24, 0.7)',
       boxShadow: active ? `0 0 16px ${t.glow}, inset 0 0 20px ${t.glow}` : undefined, opacity: st.done && !active ? 0.75 : 1 }}>
@@ -129,7 +152,12 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
       ) : null}
       {timer || live ? (
         <Row style={{ paddingLeft: 34, flexWrap: 'wrap' }}>
-          {timer ? <Num size={20} color={active ? t.bright : t.muted} style={{ minWidth: 76 }}>{timer}</Num> : null}
+          {timer ? (
+            <View style={{ minWidth: 76 }}>
+              <Num size={active ? 34 : 20} color={active ? t.bright : t.muted}>{timer}</Num>
+              {active && emomMin ? <Caps size={9} glow={false} style={{ color: t.muted }}>{'Minute ' + emomMin + ' / ' + cd / 60}</Caps> : null}
+            </View>
+          ) : null}
           {live ? (active ? (
             <>
               <Btn primary small label="Done" onPress={() => g.actions.finishItem(it.id)} />

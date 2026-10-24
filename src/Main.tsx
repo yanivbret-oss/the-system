@@ -5,7 +5,7 @@ import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Ring, Meter, useT, Tone }
 import { F } from './theme';
 import { WORKOUTS, ORDER, QUESTS, XP, DAYS, DAY_LETTERS, KEY_NAMES, WorkoutKey } from './data';
 import {
-  Profile, Rec, player, streak, onDay, penaltyActive, secretFor, weekStart, weights, ACH, fmt, rxFor, QUEST_KEYS, startOfDay, parseYmd,
+  Profile, Rec, player, streak, onDay, penaltyActive, secretFor, weekStart, weights, ACH, fmt, rxFor, QUEST_KEYS, startOfDay, parseYmd, todaysWorkout,
 } from './logic';
 import { useGame } from './game';
 import { QuestScreen } from './QuestScreen';
@@ -21,7 +21,7 @@ export function Main({ profile, history, setHistory, onRedGate }: { profile: Pro
   useEffect(() => { onRedGate(red); }, [red]);
   if (!s) return null;
 
-  const showQuest = inQuest || g.running;
+  const showQuest = inQuest || g.running || (!!s.endedAt && !s.saved);
   const open = (key: string) => { if (s.key !== key || s.saved) g.actions.open(key); setInQuest(true); };
 
   return (
@@ -122,8 +122,8 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
             </View>
             <Row style={{ gap: 16 }}>
               <Ring size={84} progress={left / 86400}>
-                <Num size={15}>{pad(h) + ':' + pad(m)}</Num>
-                <Text style={{ color: t.muted, fontFamily: F.medium, fontSize: 10 }}>{pad(sec) + 's'}</Text>
+                <Num size={14}>{h + 'h ' + pad(m) + 'm'}</Num>
+                <Text style={{ color: t.muted, fontFamily: F.medium, fontSize: 10 }}>left</Text>
               </Ring>
               <View style={{ flex: 1, gap: 6 }}>
                 <Text style={{ color: t.warn, fontFamily: F.semi, fontSize: 13, lineHeight: 19 }}>Complete it by midnight, or face the penalty zone.</Text>
@@ -212,11 +212,13 @@ function WeekStrip({ history, profile, today }: { history: Rec[]; profile: Profi
         const done = onDay(history, d, QUEST_KEYS), past = d.getTime() < t0, isToday = d.getTime() === t0;
         const missed = past && !done && d >= start;
         const c = done ? t.good : missed ? t.warn : isToday ? t.bright : t.dim;
+        const gate = todaysWorkout(d);
         return (
           <View key={i} style={{ flex: 1, alignItems: 'center', gap: 4, paddingVertical: 8, borderWidth: 1, borderColor: isToday ? t.edge : done ? 'rgba(89,232,255,0.35)' : t.line,
             backgroundColor: done ? 'rgba(89,232,255,0.08)' : 'rgba(0,0,0,0.25)', boxShadow: isToday ? `0 0 10px ${t.glow}` : undefined }}>
             <Caps size={10} glow={false} style={{ color: isToday ? t.bright : t.muted, letterSpacing: 1 }}>{DAY_LETTERS[i]}</Caps>
             <Text style={{ color: c, fontFamily: F.bold, fontSize: 13 }}>{done ? '✓' : missed ? '✕' : d.getDate()}</Text>
+            <View style={{ width: 4, height: 4, transform: [{ rotate: '45deg' }], backgroundColor: gate ? (gate === 'D' ? t.warn : t.bright) : 'transparent' }} />
           </View>
         );
       })}

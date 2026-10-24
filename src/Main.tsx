@@ -3,22 +3,29 @@ import { View, Text, TextInput, Pressable, ScrollView } from 'react-native';
 import Svg, { Polyline, Rect, Path } from 'react-native-svg';
 import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Ring, Meter, useT, Tone } from './ui';
 import { F } from './theme';
-import { WORKOUTS, ORDER, QUESTS, XP, DAYS, DAY_LETTERS, KEY_NAMES, WorkoutKey } from './data';
+import { WORKOUTS, QUESTS, XP, DAYS, DAY_LETTERS, KEY_NAMES, GEAR, Gear } from './data';
 import {
-  Profile, Rec, player, streak, onDay, penaltyActive, secretFor, weekStart, weights, ACH, fmt, rxFor, QUEST_KEYS, startOfDay, parseYmd, todaysWorkout, gatesFor, gateDay, gradeFor,
+  Profile, Rec, player, streak, onDay, penaltyActive, secretFor, weekStart, weights, ACH, fmt, rxFor, QUEST_KEYS, startOfDay, parseYmd, todaysWorkout, gatesFor, gateDay, gradeFor, isPremium, trialLeft, RANKS, FREE_RANK_CAP, DEFAULT_DAYS, TRIAL_DAYS,
 } from './logic';
 import { useGame } from './game';
 import { QuestScreen } from './QuestScreen';
 
 type Tab = 'quest' | 'status';
 
-export function Main({ profile, history, setHistory, onRedGate }: { profile: Profile; history: Rec[]; setHistory: (h: Rec[]) => void; onRedGate: (on: boolean) => void }) {
+export function Main({ profile, history, setHistory, onRedGate, onProfile }: { profile: Profile; history: Rec[]; setHistory: (h: Rec[]) => void; onRedGate: (on: boolean) => void; onProfile: (p: Profile) => void }) {
   const g = useGame(profile, history, setHistory);
   const [tab, setTab] = useState<Tab>('quest');
   const [inQuest, setInQuest] = useState(false);
   const s = g.s;
   const red = !!s && s.key === 'D' && !s.saved && (inQuest || g.running);
   useEffect(() => { onRedGate(red); }, [red]);
+  // day 8: the trial ends once, with a System notification
+  const premium = isPremium(profile, g.today);
+  useEffect(() => {
+    if (premium || profile.trialSeen) return;
+    g.notify({ title: 'TRIAL ENDED', tone: 'gold', lines: ['Your ' + TRIAL_DAYS + '-day premium trial has ended.', 'The Red Gate and ranks above ' + FREE_RANK_CAP + ' are now sealed.', 'Unlock premium in Status to keep the full System.'] });
+    onProfile({ ...profile, trialSeen: true });
+  }, [premium]);
   if (!s) return null;
 
   const showQuest = inQuest || g.running || (!!s.endedAt && !s.saved);
@@ -30,7 +37,7 @@ export function Main({ profile, history, setHistory, onRedGate }: { profile: Pro
         <>
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}>
             {tab === 'quest' ? <QuestTab g={g} profile={profile} history={history} open={open} />
-              : <StatusTab profile={profile} history={history} />}
+              : <StatusTab g={g} profile={profile} history={history} onProfile={onProfile} />}
           </ScrollView>
           <TabBar tab={tab} setTab={setTab} />
         </>
@@ -66,7 +73,8 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
   const qKey = todayW || 'Q';
   const qDone = onDay(history, today, QUEST_KEYS);
   const penalty = penaltyActive(history, profile, today);
-  const secret = secretFor(today);
+  const secret = secretFor(today, g.gear);
+  const premium = isPremium(profile, today);
   const showSecret = !!secret && !onDay(history, today, ['S']);
   const ws = weights(history);
   // the weekly weigh-in is a quest from the first day of the week until it is done
@@ -77,7 +85,7 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
   const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60);
   const pad = (n: number) => String(n).padStart(2, '0');
   const goals: [string, string][] = todayW
-    ? WORKOUTS[todayW].items.filter(i => i.id !== 'warm').map(i => [i.name, rxFor(i, g.week)])
+    ? g.wk(todayW).items.filter(i => i.id !== 'warm').map(i => [i.name, rxFor(i, g.week)])
     : QUESTS.Q.goals(g.week).map(x => [x.label, x.target + (x.unit || '')]);
 
   return (
@@ -126,7 +134,7 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
             </View>
             <View style={{ flex: 1 }}>
               <Caps size={11} color={t.good}>Daily quest cleared</Caps>
-              <Text style={{ color: t.fg, fontFamily: F.semi, fontSize: 15, marginTop: 2 }}>{todayW ? WORKOUTS[todayW].name : QUESTS.Q.title}</Text>
+              <Text style={{ color: t.fg, fontFamily: F.semi, fontSize: 15, marginTop: 2 }}>{todayW ? g.wk(todayW).name : QUESTS.Q.title}</Text>
             </View>
             <Text style={{ color: t.muted, fontFamily: F.semi, fontSize: 12 }}>{'+' + (XP[qKey] || 0) + ' XP'}</Text>
           </View>
@@ -136,7 +144,7 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
           <Win title="DAILY QUEST">
             <View style={{ alignItems: 'center', gap: 2 }}>
               <Caps size={11} glow={false} style={{ color: t.muted }}>{todayW ? 'Today’s training' : 'Rest day'}</Caps>
-              <Text style={{ fontFamily: F.bold, fontSize: 22, textAlign: 'center', color: t.bright }}>{todayW ? WORKOUTS[todayW].name : QUESTS.Q.title}</Text>
+              <Text style={{ fontFamily: F.bold, fontSize: 22, textAlign: 'center', color: t.bright }}>{todayW ? g.wk(todayW).name : QUESTS.Q.title}</Text>
               <Text style={{ fontFamily: F.medium, fontSize: 13, color: t.muted, marginTop: 2 }}>{goals.length + (todayW ? (goals.length === 1 ? ' exercise' : ' exercises') : ' goals')}</Text>
             </View>
             <Row style={{ gap: 16 }}>
@@ -161,11 +169,19 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
         <Caps size={12} style={{ color: t.muted }} glow={false}>Gates this week</Caps>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {gates.map(k => {
-            const w = WORKOUTS[k], day = gateDay(k, profile), cleared = history.some(x => x.key === k && new Date(x.createdAt) >= weekStart(today));
+            const w = g.wk(k), day = gateDay(k, profile), cleared = history.some(x => x.key === k && new Date(x.createdAt) >= weekStart(today));
             const isRed = k === 'D', isToday = k === todayW;
             // gates ahead stay sealed until their day: the workout is a surprise
+            const locked = isRed && !premium;
             const sealed = !cleared && day > today.getDay();
-            const missed = !cleared && day < today.getDay();
+            const missed = !cleared && !locked && day < today.getDay();
+            if (locked) return (
+              <Pressable key={k} onPress={() => g.notify(PREMIUM_NOTICE)} style={({ pressed }) => ({ width: '47%', flexGrow: 1, borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,201,77,0.55)', paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center', gap: 4,
+                backgroundColor: pressed ? 'rgba(255,201,77,0.12)' : 'rgba(4,10,24,0.6)' })}>
+                <Row style={{ gap: 6 }}><Lock color={t.gold} size={13} /><Text style={{ color: t.gold, fontFamily: F.bold, fontSize: 16 }}>Red Gate</Text></Row>
+                <Caps size={10} glow={false} style={{ color: t.gold }}>Premium</Caps>
+              </Pressable>
+            );
             return (
               <Pressable key={k} disabled={sealed} onPress={() => open(k)} style={({ pressed }) => ({ width: '47%', flexGrow: 1, borderWidth: 1, paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center', gap: 4,
                 borderColor: isRed && !sealed ? 'rgba(255,45,79,0.65)' : isToday ? t.edge : t.line, borderStyle: sealed ? 'dashed' : 'solid',
@@ -190,6 +206,7 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
 // The player's window, compact, at the top of the home screen
 function HomeStatus({ profile, history, today }: { profile: Profile; history: Rec[]; today: Date }) {
   const t = useT(), p = player(history);
+  const left = trialLeft(profile, today);
   return (
     <Appear>
       <Win title="STATUS" icon="i" pad={16}>
@@ -197,7 +214,10 @@ function HomeStatus({ profile, history, today }: { profile: Profile; history: Re
           <View>
             <Caps size={10} glow={false} style={{ color: t.muted }}>{'Player: ' + profile.name}</Caps>
             <Text style={{ color: t.bright, fontFamily: F.bold, fontSize: 28, lineHeight: 34 }}>{'Level ' + p.level}</Text>
-            <Caps size={10} color={t.accent} glow={false}>{gradeFor(p.level)}</Caps>
+            <Row style={{ gap: 8 }}>
+              <Caps size={10} color={t.accent} glow={false}>{gradeFor(p.level)}</Caps>
+              {profile.premium || left ? <PremiumTag text={profile.premium ? 'Premium' : 'Trial · ' + left + (left === 1 ? ' day' : ' days')} /> : null}
+            </Row>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Caps size={10} glow={false} style={{ color: t.muted }}>Rank</Caps>
@@ -265,9 +285,10 @@ function WeighIn({ g, last }: { g: ReturnType<typeof useGame>; last?: number }) 
 }
 
 // ---------- STATUS: the player's window, stats, weight, achievements
-function StatusTab({ profile, history }: { profile: Profile; history: Rec[] }) {
+function StatusTab({ g, profile, history, onProfile }: { g: ReturnType<typeof useGame>; profile: Profile; history: Rec[]; onProfile: (p: Profile) => void }) {
   const t = useT();
   const p = player(history), today = new Date();
+  const premium = isPremium(profile, today);
   const ws = weights(history);
   const got = ACH.filter(a => a[3](history, today)).map(a => a[0]);
   const stats: [string, string, number][] = [['STR', 'Strength', p.str], ['VIT', 'Endurance', p.end], ['AGI', 'Mobility', p.agi]];
@@ -298,6 +319,18 @@ function StatusTab({ profile, history }: { profile: Profile; history: Rec[] }) {
             </Row>
             <Meter value={p.into / p.need} height={8} />
           </View>
+          <Row style={{ gap: 4 }}>
+            {RANKS.map(r => {
+              const cur = r === profile.rank, locked = !premium && RANKS.indexOf(r) > RANKS.indexOf(FREE_RANK_CAP);
+              return (
+                <View key={r} style={{ flex: 1, alignItems: 'center', paddingVertical: 6, borderWidth: 1, borderColor: cur ? t.edge : locked ? 'rgba(255,201,77,0.35)' : t.line,
+                  backgroundColor: cur ? 'rgba(80,170,255,0.14)' : 'rgba(0,0,0,0.25)', flexDirection: 'row', justifyContent: 'center', gap: 4 }}>
+                  {locked ? <Lock color={t.gold} size={10} /> : null}
+                  <Num size={14} color={cur ? t.bright : locked ? t.gold : t.muted}>{r}</Num>
+                </View>
+              );
+            })}
+          </Row>
           <Divider />
           {stats.map(([k, name, v]) => (
             <Row key={k} style={{ gap: 12 }}>
@@ -344,8 +377,104 @@ function StatusTab({ profile, history }: { profile: Profile; history: Rec[] }) {
           </View>
         </Win>
       </Appear>
+      <PremiumWin g={g} profile={profile} />
+      <Settings g={g} profile={profile} onProfile={onProfile} />
       <History history={history} />
     </>
+  );
+}
+
+const PREMIUM_NOTICE = { title: 'PREMIUM', tone: 'gold' as Tone, lines: ['This gate is sealed for free players.', 'Premium unlocks the Red Gate, ranks up to S and a plan that adapts to you every week.', 'Open Status to see the premium plan.'] };
+
+function PremiumTag({ text }: { text: string }) {
+  const t = useT();
+  return (
+    <View style={{ borderWidth: 1, borderColor: t.gold, paddingHorizontal: 6, paddingVertical: 1, backgroundColor: 'rgba(255,201,77,0.1)', boxShadow: '0 0 8px rgba(255,201,77,0.35)' }}>
+      <Caps size={8} color={t.gold} glow={false} style={{ letterSpacing: 1.5 }}>{text}</Caps>
+    </View>
+  );
+}
+
+// What premium unlocks, and the trial state
+const PERKS: [string, boolean][] = [
+  ['Daily quest, 3 gates a week, penalty zone', false],
+  ['Levels, grades and ranks up to ' + FREE_RANK_CAP, false],
+  ['The Red Gate, a new one every week', true],
+  ['Ranks B, A and S', true],
+  ['A plan that adapts to your reports every week', true],
+  ['Switch equipment any time: none, home kit or gym', true],
+  ['Monthly progress report', true],
+];
+function PremiumWin({ g, profile }: { g: ReturnType<typeof useGame>; profile: Profile }) {
+  const t = useT(), today = new Date(), left = trialLeft(profile, today);
+  return (
+    <Appear delay={180}>
+      <Win title="PREMIUM" icon="★" tone="gold">
+        <T style={{ textAlign: 'center', fontFamily: F.semi, fontSize: 16, color: t.gold }}>
+          {profile.premium ? 'Premium is active' : left ? 'Free trial · ' + left + (left === 1 ? ' day' : ' days') + ' left' : 'The System learns you'}
+        </T>
+        <View style={{ gap: 8 }}>
+          {PERKS.map(([label, paid]) => (
+            <Row key={label} style={{ gap: 10 }}>
+              {paid ? <Lock color={profile.premium || left ? t.good : t.gold} size={12} /> : <Text style={{ color: t.good, fontFamily: F.bold, fontSize: 13, width: 12 }}>✓</Text>}
+              <T style={{ fontSize: 13, flex: 1, color: paid ? t.fg : t.muted }}>{label}</T>
+              {paid ? <Caps size={8} glow={false} style={{ color: t.gold }}>Premium</Caps> : <Caps size={8} glow={false} style={{ color: t.muted }}>Free</Caps>}
+            </Row>
+          ))}
+        </View>
+        {profile.premium ? null : (
+          <>
+            <Divider />
+            <Row style={{ justifyContent: 'center', gap: 16 }}>
+              <View style={{ alignItems: 'center' }}><Num size={20} color={t.gold}>$2.99</Num><Caps size={8} glow={false} style={{ color: t.muted }}>per month</Caps></View>
+              <View style={{ alignItems: 'center' }}><Num size={20} color={t.gold}>$17.99</Num><Caps size={8} glow={false} style={{ color: t.muted }}>per year · save 50%</Caps></View>
+            </Row>
+            <Btn gold big label="Unlock premium" onPress={() => g.notify({ title: 'PREMIUM', tone: 'gold', lines: ['Payments open with the Google Play release.', 'Until then, every feature stays visible here.'] })} />
+          </>
+        )}
+      </Win>
+    </Appear>
+  );
+}
+
+// Training days and equipment; changing equipment after the trial is a premium perk
+function Settings({ g, profile, onProfile }: { g: ReturnType<typeof useGame>; profile: Profile; onProfile: (p: Profile) => void }) {
+  const t = useT();
+  const premium = isPremium(profile, new Date());
+  const [days, setDays] = useState<number[]>(profile.days || DEFAULT_DAYS);
+  const gear: Gear = profile.gear || 'basic';
+  const changed = days.join() !== (profile.days || DEFAULT_DAYS).join(), ok = days.length === 3 || days.length === 4;
+  const flip = (d: number) => setDays(cur => cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d].sort((a, b) => a - b));
+  return (
+    <Appear delay={190}>
+      <Win title="SETTINGS" icon="i">
+        <Caps size={10} glow={false} style={{ color: t.muted }}>Training days · pick 3 or 4</Caps>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+          {DAYS.map((d, i) => <Btn key={d} small label={d.slice(0, 3)} on={days.includes(i)} onPress={() => flip(i)} style={{ minWidth: 52, flexGrow: 1 }} />)}
+        </View>
+        {changed ? <Btn primary label={ok ? 'Save training days' : 'Choose 3 or 4 days'} disabled={!ok} onPress={() => onProfile({ ...profile, days })} /> : null}
+        <Divider />
+        <Row style={{ justifyContent: 'space-between' }}>
+          <Caps size={10} glow={false} style={{ color: t.muted }}>Equipment</Caps>
+          {premium ? null : <Row style={{ gap: 4 }}><Lock color={t.gold} size={10} /><Caps size={8} glow={false} style={{ color: t.gold }}>Premium to change</Caps></Row>}
+        </Row>
+        <View style={{ gap: 6 }}>
+          {GEAR.map(([k, label, sub]) => (
+            <Pressable key={k} disabled={!premium || k === gear} onPress={() => onProfile({ ...profile, gear: k })} accessibilityRole="radio" accessibilityState={{ checked: k === gear }}
+              style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderWidth: 1, borderColor: k === gear ? t.edge : t.line,
+                backgroundColor: pressed ? 'rgba(150,215,255,0.12)' : k === gear ? 'rgba(80,170,255,0.12)' : 'rgba(0,0,0,0.25)', opacity: !premium && k !== gear ? 0.5 : 1 })}>
+              <View style={{ width: 14, height: 14, borderRadius: 7, borderWidth: 1, borderColor: k === gear ? t.bright : t.muted, alignItems: 'center', justifyContent: 'center' }}>
+                {k === gear ? <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: t.bright }} /> : null}
+              </View>
+              <View style={{ flex: 1 }}>
+                <T style={{ fontFamily: F.semi, fontSize: 14, color: k === gear ? t.bright : t.fg }}>{label}</T>
+                <T muted style={{ fontSize: 12 }}>{sub}</T>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+      </Win>
+    </Appear>
   );
 }
 
@@ -360,7 +489,7 @@ function History({ history }: { history: Rec[] }) {
         {!history.length ? <T muted style={{ textAlign: 'center' }}>Completed quests will appear here.</T> : list.map((x, i) => (
           <View key={x.createdAt} style={{ gap: 2, paddingTop: i ? 10 : 0, borderTopWidth: i ? 1 : 0, borderColor: t.line }}>
             <Row style={{ justifyContent: 'space-between' }}>
-              <T style={{ fontFamily: F.semi, fontSize: 14, color: x.key === 'D' || x.key === 'P' ? t.warn : t.fg }}>{x.key === 'W' ? 'Weigh-in: ' + x.kg + ' kg' : WORKOUTS[x.key as WorkoutKey]?.name || KEY_NAMES[x.key] || x.key}</T>
+              <T style={{ fontFamily: F.semi, fontSize: 14, color: x.key === 'D' || x.key === 'P' ? t.warn : t.fg }}>{x.key === 'W' ? 'Weigh-in: ' + x.kg + ' kg' : x.workout || KEY_NAMES[x.key] || x.key}</T>
               <Num size={14} color={t.muted}>{'WSQP'.includes(x.key) ? '+' + (XP[x.key] || 0) + ' XP' : fmt(x.totalSec)}</Num>
             </Row>
             <T muted style={{ fontSize: 12 }}>{new Date(x.createdAt).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + (x.score && x.key !== 'S' && x.key !== 'W' ? ' · ' + x.score : '') + (x.feel ? ' · felt ' + x.feel + '/5' : '')}</T>

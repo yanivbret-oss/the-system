@@ -38,7 +38,7 @@ export function QuestScreen({ g, onBack }: { g: Game; onBack: () => void }) {
 }
 
 function WorkoutTop({ g }: { g: Game }) {
-  const t = useT(), s = g.s!, W = WORKOUTS[s.key as WorkoutKey];
+  const t = useT(), s = g.s!, W = g.W!;
   return (
     <Appear>
       <Win title="QUEST INFO">
@@ -52,7 +52,7 @@ function WorkoutTop({ g }: { g: Game }) {
 }
 
 function SessionBar({ g }: { g: Game }) {
-  const t = useT(), s = g.s!, W = WORKOUTS[s.key as WorkoutKey];
+  const t = useT(), s = g.s!, W = g.W!;
   const done = W.items.filter(i => s.items[i.id]?.done).length;
   return (
     <View style={{ backgroundColor: t.bg, paddingVertical: 10, borderBottomWidth: 1, borderColor: t.line, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -80,7 +80,7 @@ function Check({ on, color }: { on: boolean; color: string }) {
 }
 
 function WorkoutItems({ g, ys }: { g: Game; ys: Record<string, number> }) {
-  const t = useT(), s = g.s!, W = WORKOUTS[s.key as WorkoutKey];
+  const t = useT(), s = g.s!, W = g.W!;
   const [hard, setHard] = useState('');
   return (
     <View style={{ gap: 12 }}>
@@ -164,7 +164,7 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
             : <Btn small label="Undo" onPress={() => g.actions.undoItem(it.id)} />) : null}
         </Row>
       ) : null}
-      <View style={{ paddingLeft: 34 }}><HowTo keys={HOW[it.id]} /></View>
+      <View style={{ paddingLeft: 34 }}><HowTo keys={it.how || HOW[it.id]} /></View>
     </View>
   );
 }
@@ -172,7 +172,7 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
 function CounterQuest({ g }: { g: Game }) {
   const t = useT(), s = g.s!;
   const pen = s.key === 'P', Qd = QUESTS[s.key as 'Q' | 'P'];
-  const goals = pen ? QUESTS.P.goals() : QUESTS.Q.goals(s.week);
+  const goals = pen ? QUESTS.P.goals(g.gear) : QUESTS.Q.goals(s.week);
   const count = (id: string, timer?: boolean) => { const c = s.counts?.[id] || 0; return timer && s.plankSince ? c + Math.floor((Date.now() - s.plankSince) / 1000) : c; };
   const all = goals.every(x => count(x.id, x.timer) >= x.target);
   return (

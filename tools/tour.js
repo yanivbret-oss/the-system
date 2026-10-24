@@ -5,7 +5,8 @@ const [base = 'http://localhost:8767', out = 'shots'] = process.argv.slice(2);
 require('fs').mkdirSync(out, { recursive: true });
 
 const at = (y, m, d, h = 10, mi = 0) => new Date(y, m - 1, d, h, mi).getTime();
-const rec = (key, t, extra = {}) => ({ key, workout: key, week: 1, date: '', createdAt: t, totalSec: key.match(/[ABCD]/) ? 2400 : 0, exercises: [], score: '', feel: 4, hard: '', ...extra });
+const NAMES = { A: 'Legs + Kettlebell', B: 'Upper Body + Pull-ups', C: 'Run + Rounds', D: 'Red Gate', Q: 'Preparation to Become Strong', S: 'Secret Quest', W: 'Weigh-in', P: 'Penalty Quest' };
+const rec = (key, t, extra = {}) => ({ key, workout: NAMES[key] || key, week: 1, date: '', createdAt: t, totalSec: key.match(/[ABCD]/) ? 2400 : 0, exercises: [], score: '', feel: 4, hard: '', ...extra });
 const profile = { name: 'Yaniv', startDate: '2026-10-25', rank: 'E' };
 // one realistic week: Sun Q, Mon A, Tue Q, Wed B, Thu Q, Fri C, Sat D
 const week1 = [rec('Q', at(2026,10,25,19)), rec('A', at(2026,10,26,9,50), { score: '06:12' }), rec('Q', at(2026,10,27,20)), rec('B', at(2026,10,28,9,45), { score: '4 rounds' }), rec('Q', at(2026,10,29,18))];
@@ -18,6 +19,7 @@ const scenarios = [
   { name: '03-briefing', time: at(2026,10,25), act: async p => { await p.getByLabel('Yes').click(); } },
   { name: '03b-registration', time: at(2026,10,25), act: async p => { await p.getByLabel('Yes').click(); await p.waitForTimeout(500); await p.getByLabel('Understood').click(); await p.locator('input').fill('Yaniv'); } },
   { name: '03c-training-days', time: at(2026,10,25), act: async p => { await p.getByLabel('Yes').click(); await p.waitForTimeout(500); await p.getByLabel('Understood').click(); await p.locator('input').fill('Yaniv'); await p.getByLabel('Next').click(); } },
+  { name: '03d-equipment', time: at(2026,10,25), act: async p => { await p.getByLabel('Yes').click(); await p.waitForTimeout(500); await p.getByLabel('Understood').click(); await p.locator('input').fill('Yaniv'); await p.getByLabel('Next').click(); await p.waitForTimeout(400); await p.getByLabel('Next').click(); await p.waitForTimeout(400); await p.getByLabel('No equipment').click(); } },
   { name: '04-home-first-day', time: at(2026,10,25), seed: { profile } , scroll: true },
   { name: '05-home-training-day', time: at(2026,10,26, 8), seed: { profile, history: [rec('Q', at(2026,10,25,19))] }, scroll: true },
   { name: '06-home-rest-day-secret', time: at(2026,10,29, 9), seed: { profile, history: week1.slice(0, 4).reverse() }, scroll: true },
@@ -36,6 +38,11 @@ const scenarios = [
   { name: '19-penalty-quest', time: at(2026,10,28, 8), seed: { profile, history: [rec('A', at(2026,10,26,9)), rec('Q', at(2026,10,25,19))] }, act: async p => { await p.getByLabel('Enter penalty zone').click(); } },
   { name: '20-red-gate-quest', time: at(2026,10,31, 10), seed: { profile, history: [rec('C', at(2026,10,30,10)), ...week1.slice().reverse()] }, act: async p => { await p.getByLabel('Accept quest').click(); }, scroll: true },
   { name: '21-red-gate-running', time: at(2026,10,31, 10, 20), seed: { profile, session: sess('D', at(2026,10,31), { startedAt: at(2026,10,31,10,0), active: 'd1', items: { warm: { sec: 480, done: true }, d1: { sec: 0, runningSince: at(2026,10,31,10,8) } } }) } },
+  { name: '22-trial-ended-popup', time: at(2026,10,29, 9), keepPopups: true, seed: { profile: { ...profile, startDate: '2026-10-04' }, history: [...week1.slice().reverse(), ...many], 'ach-seen': ['Awakening','Gate Opener','Machine','Level 5'] } },
+  { name: '23-home-free-red-gate-locked', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04', trialSeen: true }, history: [...week1.slice().reverse(), ...many] }, scroll: true },
+  { name: '24-status-premium-settings', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04', trialSeen: true }, history: [...week1.slice().reverse(), ...many] }, act: async p => { await p.getByRole('tab', { name: 'Status' }).click(); await p.waitForTimeout(500); await p.mouse.move(195, 500); await p.mouse.wheel(0, 1500); }, scroll: true },
+  { name: '25-workout-no-equipment', time: at(2026,10,28, 9), seed: { profile: { ...profile, gear: 'none' }, history: [rec('Q', at(2026,10,27,19)), rec('A', at(2026,10,26,9)), rec('Q', at(2026,10,25,19))] }, act: async p => { await p.getByLabel('Accept quest').click(); }, scroll: true },
+  { name: '26-home-premium', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04', premium: true, trialSeen: true, rank: 'B' }, history: [...week1.slice().reverse(), ...many] } },
 ];
 
 (async () => {

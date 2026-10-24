@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
-import { WORKOUTS, QUESTS, XP, WorkoutKey, Item } from './data';
+import { WORKOUTS, QUESTS, XP, WorkoutKey, Item, workoutFor } from './data';
 import { beep } from './sound';
 import {
   Profile, Rec, Session, store, rxFor, cdFor, itemSec, player, fmt, weeksIn, planWeek, todaysWorkout, ACH,
@@ -14,6 +14,8 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
   const todayStr = today.toDateString();
   const week = planWeek(weeksIn(profile, today));
   const todayW = todaysWorkout(today, profile);
+  const gear = profile.gear || 'basic';
+  const wk = (k: WorkoutKey) => workoutFor(k, gear);
 
   const fresh = (key: string, w = week): Session => ({ v: 3, key, week: w, day: todayStr, startedAt: null, endedAt: null, items: {}, active: null, feel: 0 });
   const [s, setS] = useState<Session | null>(null);
@@ -64,7 +66,7 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
             cur.counts = { ...cur.counts, [g.id]: g.target }; cur.plankSince = null; beep(523, true); changed = true;
           }
         }
-        const w = WORKOUTS[cur.key as WorkoutKey];
+        const w = WORKOUTS[cur.key as WorkoutKey] && workoutFor(cur.key as WorkoutKey, gear);
         if (w && cur.active) {
           const it = w.items.find(i => i.id === cur.active)!, st = cur.items[cur.active];
           const cd = cdFor(it, cur.week), sec = itemSec(st);
@@ -96,7 +98,7 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
   }
 
   // ---- workout actions (they mutate a copy of the session, then save it)
-  const W = s ? WORKOUTS[s.key as WorkoutKey] : undefined;
+  const W = s && WORKOUTS[s.key as WorkoutKey] ? wk(s.key as WorkoutKey) : undefined;
   function pauseItem(cur: Session, id: string) { const st = cur.items[id]; if (st && st.runningSince) { st.sec = itemSec(st); st.runningSince = null; } }
   function startItemIn(cur: Session, id: string) {
     if (cur.active && cur.active !== id) pauseItem(cur, cur.active);
@@ -155,7 +157,7 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
     },
     saveQuest: async () => {
       const cur = s!, Qd = QUESTS[cur.key as 'Q' | 'P'];
-      const goals = cur.key === 'Q' ? QUESTS.Q.goals(cur.week) : QUESTS.P.goals();
+      const goals = cur.key === 'Q' ? QUESTS.Q.goals(cur.week) : QUESTS.P.goals(gear);
       const rec: Rec = { key: cur.key, workout: Qd.title, week: cur.week, date: new Date().toISOString().slice(0, 10), createdAt: Date.now(), totalSec: 0,
         exercises: goals.map(g => ({ name: g.label, rx: String(g.target), done: true })), score: '', feel: null, hard: '' };
       const { before, after } = await addRec(rec);
@@ -175,5 +177,5 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
     },
   };
 
-  return { s, W, running, week, todayW, today, actions, notices, dismiss };
+  return { s, W, wk, gear, running, week, todayW, today, actions, notices, dismiss, notify };
 }

@@ -1,12 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { XP, XP_PER_LEVEL, SECRETS, WORKOUTS, ORDER, Item } from './data';
+import { XP, XP_PER_LEVEL, SECRETS, GEAR_SECRETS, WORKOUTS, ORDER, Item, Gear } from './data';
 
 export type Rec = {
   key: string; workout: string; week: number; date: string; createdAt: number; totalSec: number;
   exercises: { name: string; rx: string; sec?: number; done: boolean }[];
   score: string; feel: number | null; hard: string; kg?: number;
 };
-export type Profile = { name: string; startDate: string; rank: string; days?: number[] };
+export type Profile = { name: string; startDate: string; rank: string; days?: number[]; gear?: Gear; premium?: boolean; trialSeen?: boolean };
 export type ItemState = { sec: number; runningSince?: number | null; done?: boolean; sets?: boolean[]; rounds?: number; lastBeepMin?: number; endBeeped?: boolean };
 export type Session = {
   v: 3; key: string; week: number; day: string; startedAt: number | null; endedAt: number | null;
@@ -40,7 +40,18 @@ export const planWeek = (n: number) => ((Math.max(1, n) - 1) % 4) + 1;
 export const DEFAULT_DAYS = [1, 3, 5, 6];
 export const gatesFor = (p: Profile) => ORDER.slice(0, Math.min(4, (p.days || DEFAULT_DAYS).length));
 export const gateDay = (k: string, p: Profile) => [...(p.days || DEFAULT_DAYS)].sort((a, b) => a - b)[ORDER.indexOf(k as never)];
-export const todaysWorkout = (today: Date, p: Profile) => gatesFor(p).find(k => gateDay(k, p) === today.getDay());
+export const todaysWorkout = (today: Date, p: Profile) => {
+  const k = gatesFor(p).find(k => gateDay(k, p) === today.getDay());
+  // the Red Gate is a premium gate; without it that day gets the daily quest
+  return k === 'D' && !isPremium(p, today) ? undefined : k;
+};
+
+// ---- premium: everyone gets the full System for the first 7 days, then the free tier
+export const TRIAL_DAYS = 7;
+export const trialLeft = (p: Profile, today: Date) => Math.max(0, TRIAL_DAYS - Math.floor((startOfDay(today).getTime() - parseYmd(p.startDate).getTime()) / 864e5));
+export const isPremium = (p: Profile, today: Date) => !!p.premium || trialLeft(p, today) > 0;
+export const FREE_RANK_CAP = 'C';
+export const RANKS = ['E', 'D', 'C', 'B', 'A', 'S'];
 // Titles by level, from the lowest soldier to the top of the army
 export const GRADES: [number, string][] = [[1, 'Normal'], [5, 'Elite'], [10, 'Knight'], [20, 'Elite Knight'], [30, 'General'], [45, 'Marshal'], [60, 'Grand Marshal']];
 export const gradeFor = (level: number) => GRADES.filter(([l]) => level >= l).pop()![1] + ' Grade';
@@ -76,7 +87,11 @@ export function penaltyActive(h: Rec[], p: Profile, today: Date) {
 }
 
 function dayHash(d: Date) { const x = d.getFullYear() * 400 + d.getMonth() * 32 + d.getDate(); return (Math.imul(x, 2654435761) >>> 0) % 1000; }
-export const secretFor = (d: Date) => dayHash(d) % 9 === 0 ? SECRETS[dayHash(d) % SECRETS.length] : null;
+export const secretFor = (d: Date, gear: Gear = 'basic') => {
+  if (dayHash(d) % 9 !== 0) return null;
+  const pool = gear === 'none' ? SECRETS.filter((_, i) => !GEAR_SECRETS.includes(i)) : SECRETS;
+  return pool[dayHash(d) % pool.length];
+};
 export function weekStart(d: Date) { const w = startOfDay(d); w.setDate(w.getDate() - w.getDay()); return w; }
 export const weights = (h: Rec[]) => h.filter(x => x.key === 'W' && x.kg).sort((a, b) => a.createdAt - b.createdAt);
 

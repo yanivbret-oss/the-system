@@ -104,12 +104,12 @@ export function Header({ title, icon = '!', tone = 'normal' }: { title: string; 
 }
 
 // Outlined rectangle button, label in spaced capitals. "primary" glows; "danger" is red.
-export function Btn({ label, onPress, primary, danger, on, disabled, big, style, small }: {
-  label: string; onPress?: () => void; primary?: boolean; danger?: boolean; on?: boolean; disabled?: boolean; big?: boolean; small?: boolean; style?: StyleProp<ViewStyle>;
+export function Btn({ label, onPress, primary, danger, gold, on, disabled, big, style, small }: {
+  label: string; onPress?: () => void; primary?: boolean; danger?: boolean; gold?: boolean; on?: boolean; disabled?: boolean; big?: boolean; small?: boolean; style?: StyleProp<ViewStyle>;
 }) {
   const t = useT();
-  const c = danger ? t.warn : on ? t.good : primary ? t.edge : t.line;
-  const glow = danger ? t.warnGlow : primary || on ? t.glow : 'transparent';
+  const c = danger ? t.warn : gold ? t.gold : on ? t.good : primary ? t.edge : t.line;
+  const glow = danger ? t.warnGlow : gold ? 'rgba(255, 200, 80, 0.35)' : primary || on ? t.glow : 'transparent';
   return (
     <Pressable
       onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled, selected: on }}
@@ -117,7 +117,7 @@ export function Btn({ label, onPress, primary, danger, on, disabled, big, style,
         backgroundColor: pressed ? 'rgba(150, 215, 255, 0.18)' : on ? 'rgba(89, 232, 255, 0.1)' : primary ? 'rgba(80, 170, 255, 0.1)' : 'rgba(0, 0, 0, 0.3)',
         boxShadow: `0 0 12px ${glow}, inset 0 0 10px ${glow}`, opacity: disabled ? 0.35 : 1, minHeight: small ? 36 : 44 }, style]}
     >
-      <Caps size={big ? 15 : small ? 11 : 13} color={danger ? t.warn : on ? t.good : t.bright} glow={!!(primary || danger || on)}>{label}</Caps>
+      <Caps size={big ? 15 : small ? 11 : 13} color={danger ? t.warn : gold ? t.gold : on ? t.good : t.bright} glow={!!(primary || danger || gold || on)}>{label}</Caps>
     </Pressable>
   );
 }

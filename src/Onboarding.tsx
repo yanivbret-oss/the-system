@@ -1,19 +1,44 @@
 import { useState } from 'react';
-import { View, TextInput } from 'react-native';
+import { View, TextInput, Pressable } from 'react-native';
 import { Win, T, Btn, Row, Caps, Appear, useT } from './ui';
-import { DAYS } from './data';
+import { DAYS, GEAR, Gear } from './data';
 import { DEFAULT_DAYS } from './logic';
 import { F } from './theme';
 import { beep } from './sound';
 
 // The awakening: the System offers to make you a Player, then asks your name
-export function Onboarding({ onDone }: { onDone: (name: string, days: number[]) => void }) {
+export function Onboarding({ onDone }: { onDone: (name: string, days: number[], gear: Gear) => void }) {
   const t = useT();
-  const [step, setStep] = useState<'offer' | 'refused' | 'rules' | 'name' | 'days'>('offer');
+  const [step, setStep] = useState<'offer' | 'refused' | 'rules' | 'name' | 'days' | 'gear'>('offer');
   const [name, setName] = useState('');
   const ok = name.trim().length > 0;
   const [days, setDays] = useState<number[]>(DEFAULT_DAYS);
   const nDays = days.length, daysOk = nDays === 3 || nDays === 4;
+  const [gear, setGear] = useState<Gear | null>(null);
+
+  if (step === 'gear') {
+    return (
+      <Appear key="gear">
+        <Win title="EQUIPMENT">
+          <T glow style={{ textAlign: 'center', fontSize: 16 }}>Where will you train?</T>
+          <T muted style={{ textAlign: 'center', fontSize: 13, lineHeight: 20 }}>The System builds every gate around what you have.</T>
+          <View style={{ gap: 8 }}>
+            {GEAR.map(([k, label, sub]) => {
+              const on = gear === k;
+              return (
+                <Pressable key={k} onPress={() => { beep(740); setGear(k); }} accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ checked: on }}
+                  style={({ pressed }) => ({ padding: 14, gap: 2, borderWidth: 1, borderColor: on ? t.edge : t.line, backgroundColor: pressed || on ? 'rgba(80,170,255,0.12)' : 'rgba(0,0,0,0.3)', boxShadow: on ? `0 0 12px ${t.glow}` : undefined })}>
+                  <T style={{ fontFamily: F.semi, fontSize: 16, color: on ? t.bright : t.fg }}>{label}</T>
+                  <T muted style={{ fontSize: 13 }}>{sub}</T>
+                </Pressable>
+              );
+            })}
+          </View>
+          <Btn primary big label="Confirm" disabled={!gear} onPress={() => { beep(1175, true); onDone(name.trim(), days, gear!); }} />
+        </Win>
+      </Appear>
+    );
+  }
 
   if (step === 'days') {
     const flip = (d: number) => setDays(cur => cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d].sort((a, b) => a - b));
@@ -26,7 +51,7 @@ export function Onboarding({ onDone }: { onDone: (name: string, days: number[]) 
             {DAYS.map((d, i) => <Btn key={d} small label={d.slice(0, 3)} on={days.includes(i)} onPress={() => flip(i)} style={{ minWidth: 64 }} />)}
           </View>
           <Caps size={10} glow={false} style={{ textAlign: 'center', color: daysOk ? t.muted : t.warn }}>{nDays + ' days selected' + (daysOk ? '' : ' · choose 3 or 4')}</Caps>
-          <Btn primary big label="Confirm" disabled={!daysOk || !ok} onPress={() => { beep(1175, true); onDone(name.trim(), days); }} />
+          <Btn primary big label="Next" disabled={!daysOk || !ok} onPress={() => { beep(880); setStep('gear'); }} />
         </Win>
       </Appear>
     );
@@ -49,7 +74,7 @@ export function Onboarding({ onDone }: { onDone: (name: string, days: number[]) 
                 <T style={{ fontSize: 15, lineHeight: 22 }}>{d}</T>
               </View>
             ))}
-            <T style={{ fontSize: 14, color: t.muted }}>Clear quests to earn XP, level up and rise in rank.</T>
+            <T style={{ fontSize: 14, color: t.muted }}>Clear quests to earn XP, level up and rise in rank. Your first 7 days include every premium feature.</T>
           </View>
           <Btn primary big label="Understood" onPress={() => { beep(880); setStep('name'); }} />
         </Win>

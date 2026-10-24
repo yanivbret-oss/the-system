@@ -34,10 +34,10 @@ export default function App() {
           <Rail />
           <View style={{ flex: 1 }}>
             {!ready ? null : profile ? (
-              <Main profile={profile} history={history} setHistory={setHistory} onRedGate={setRed} />
+              <Main profile={profile} history={history} setHistory={setHistory} onRedGate={setRed} onProfile={p => { store.saveProfile(p); setProfile(p); }} />
             ) : (
               <View style={{ flex: 1, justifyContent: 'center', padding: 20 }}>
-                <Onboarding onDone={(name, days) => { const p = { name, startDate: ymd(new Date()), rank: 'E', days }; store.saveProfile(p); setProfile(p); }} />
+                <Onboarding onDone={(name, days, gear) => { const p = { name, startDate: ymd(new Date()), rank: 'E', days, gear }; store.saveProfile(p); setProfile(p); }} />
               </View>
             )}
           </View>

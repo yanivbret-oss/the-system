@@ -154,7 +154,7 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
           {it.note ? <T muted style={{ fontSize: 14, lineHeight: 20 }}>{it.note}</T> : null}
         </View>
       </Row>
-      <Demo k={(it.how || HOW[it.id] || []).find(k => DEMOS[k])} />
+      <Demo keys={it.how || HOW[it.id]} />
       {nSets ? (
         <Row>
           {Array.from({ length: nSets }, (_, i) => {
@@ -223,7 +223,7 @@ function CounterQuest({ g }: { g: Game }) {
                     <T muted style={{ fontSize: 12 }}>or tap the goal when done</T>
                   </Row>
                 ) : null}
-                <Demo k={HOW[x.how]?.find(k => DEMOS[k])} />
+                <Demo keys={HOW[x.how]} />
                 {how === x.id ? <HowTo keys={HOW[x.how]} open /> : null}
               </View>
             );

@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView } from 'react-native';
-import Svg, { Polyline } from 'react-native-svg';
+import Svg, { Polyline, Rect, Path } from 'react-native-svg';
 import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Ring, Meter, useT, Tone } from './ui';
 import { F } from './theme';
 import { WORKOUTS, ORDER, QUESTS, XP, DAYS, DAY_LETTERS, KEY_NAMES, WorkoutKey } from './data';
 import {
-  Profile, Rec, player, streak, onDay, penaltyActive, secretFor, weekStart, weights, ACH, fmt, rxFor, QUEST_KEYS, startOfDay, parseYmd, todaysWorkout,
+  Profile, Rec, player, streak, onDay, penaltyActive, secretFor, weekStart, weights, ACH, fmt, rxFor, QUEST_KEYS, startOfDay, parseYmd, todaysWorkout, gatesFor, gateDay, gradeFor,
 } from './logic';
 import { useGame } from './game';
 import { QuestScreen } from './QuestScreen';
 
-type Tab = 'quest' | 'status' | 'log';
+type Tab = 'quest' | 'status';
 
 export function Main({ profile, history, setHistory, onRedGate }: { profile: Profile; history: Rec[]; setHistory: (h: Rec[]) => void; onRedGate: (on: boolean) => void }) {
   const g = useGame(profile, history, setHistory);
@@ -30,8 +30,7 @@ export function Main({ profile, history, setHistory, onRedGate }: { profile: Pro
         <>
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}>
             {tab === 'quest' ? <QuestTab g={g} profile={profile} history={history} open={open} />
-              : tab === 'status' ? <StatusTab profile={profile} history={history} />
-              : <LogTab history={history} />}
+              : <StatusTab profile={profile} history={history} />}
           </ScrollView>
           <TabBar tab={tab} setTab={setTab} />
         </>
@@ -43,7 +42,7 @@ export function Main({ profile, history, setHistory, onRedGate }: { profile: Pro
 
 function TabBar({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   const t = useT();
-  const items: [Tab, string][] = [['quest', 'Quests'], ['status', 'Status'], ['log', 'Log']];
+  const items: [Tab, string][] = [['quest', 'Quests'], ['status', 'Status']];
   return (
     <View style={{ flexDirection: 'row', borderTopWidth: 1, borderColor: t.line, backgroundColor: 'rgba(2, 6, 17, 0.9)' }}>
       {items.map(([k, label]) => {
@@ -70,10 +69,12 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
   const secret = secretFor(today);
   const showSecret = !!secret && !onDay(history, today, ['S']);
   const ws = weights(history);
-  const weighDue = today.getDay() >= 5 && !ws.some(x => new Date(x.createdAt) >= weekStart(today));
+  // the weekly weigh-in is a quest from the first day of the week until it is done
+  const weighDue = !ws.some(x => new Date(x.createdAt) >= weekStart(today));
+  const gates = gatesFor(profile);
   const midnight = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).getTime();
   const left = Math.max(0, (midnight - Date.now()) / 1000);
-  const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60), sec = Math.floor(left % 60);
+  const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60);
   const pad = (n: number) => String(n).padStart(2, '0');
   const goals: [string, string][] = todayW
     ? WORKOUTS[todayW].items.filter(i => i.id !== 'warm').map(i => [i.name, rxFor(i, g.week)])
@@ -89,12 +90,30 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
       <WeekStrip history={history} profile={profile} today={today} />
 
       {penalty ? (
-        <Appear>
-          <Win title="PENALTY" tone="penalty">
-            <T style={{ textAlign: 'center' }}>{"Yesterday's daily quest was not completed."}</T>
-            <T style={{ textAlign: 'center', color: t.warn, fontFamily: F.semi }}>You have been moved to the Penalty Zone.</T>
-            <T muted style={{ textAlign: 'center', fontSize: 13 }}>100 kettlebell swings and 30 burpees, today.</T>
-            <Btn danger label="Enter the Penalty Zone" onPress={() => open('P')} />
+        <>
+          <Appear>
+            <Win title="PENALTY" tone="penalty">
+              <T style={{ textAlign: 'center' }}>{"Yesterday's daily quest was not completed."}</T>
+              <T style={{ textAlign: 'center', color: t.warn, fontFamily: F.semi }}>You have been moved to the Penalty Zone.</T>
+              <T muted style={{ textAlign: 'center', fontSize: 13 }}>100 kettlebell swings and 30 burpees. Clear it to unlock today's quests.</T>
+              <Btn danger big label="Enter penalty zone" onPress={() => open('P')} />
+            </Win>
+          </Appear>
+          <View style={{ borderWidth: 1, borderColor: t.line, borderStyle: 'dashed', padding: 18, alignItems: 'center', gap: 8, backgroundColor: 'rgba(0,0,0,0.35)' }}>
+            <Lock color={t.muted} size={22} />
+            <Caps size={11} glow={false} style={{ color: t.muted, textAlign: 'center' }}>Quests locked</Caps>
+            <T muted style={{ fontSize: 13, textAlign: 'center' }}>The daily quest and this week's gates open once the penalty is cleared.</T>
+          </View>
+        </>
+      ) : <>
+
+      {showSecret ? (
+        <Appear delay={160}>
+          <Win title="SECRET QUEST" icon="?" tone="secret">
+            <T style={{ textAlign: 'center' }}>The System has detected an opportunity. Available today only:</T>
+            <T glow style={{ textAlign: 'center', fontFamily: F.semi, color: t.bright }}>{secret}</T>
+            <T muted style={{ textAlign: 'center', fontSize: 12 }}>Reward: 50 XP. No penalty for declining.</T>
+            <Btn label="Done" onPress={() => g.actions.saveSecret(secret!)} />
           </Win>
         </Appear>
       ) : null}
@@ -121,9 +140,9 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
               <Text style={{ fontFamily: F.medium, fontSize: 13, color: t.muted, marginTop: 2 }}>{goals.length + (todayW ? (goals.length === 1 ? ' exercise' : ' exercises') : ' goals')}</Text>
             </View>
             <Row style={{ gap: 16 }}>
-              <Ring size={84} progress={left / 86400}>
-                <Num size={14}>{h + 'h ' + pad(m) + 'm'}</Num>
-                <Text style={{ color: t.muted, fontFamily: F.medium, fontSize: 10 }}>left</Text>
+              <Ring size={92} progress={left / 86400}>
+                <Num size={20}>{pad(h) + ':' + pad(m)}</Num>
+                <Caps size={8} glow={false} style={{ color: t.muted, letterSpacing: 1.5 }}>Hrs left</Caps>
               </Ring>
               <View style={{ flex: 1, gap: 6 }}>
                 <Text style={{ color: t.warn, fontFamily: F.semi, fontSize: 13, lineHeight: 19 }}>Complete it by midnight, or face the penalty zone.</Text>
@@ -135,37 +154,35 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
         </Appear>
       )}
 
-      {showSecret ? (
-        <Appear delay={160}>
-          <Win title="SECRET QUEST" icon="?" tone="secret">
-            <T style={{ textAlign: 'center' }}>The System has detected an opportunity. Available today only:</T>
-            <T glow style={{ textAlign: 'center', fontFamily: F.semi, color: t.bright }}>{secret}</T>
-            <T muted style={{ textAlign: 'center', fontSize: 12 }}>Reward: 50 XP. No penalty for declining.</T>
-            <Btn label="Done" onPress={() => g.actions.saveSecret(secret!)} />
-          </Win>
-        </Appear>
-      ) : null}
 
       {weighDue ? <WeighIn g={g} last={ws[ws.length - 1]?.kg} /> : null}
 
       <View style={{ gap: 10, marginTop: 4 }}>
         <Caps size={12} style={{ color: t.muted }} glow={false}>Gates this week</Caps>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-          {ORDER.map(k => {
-            const w = WORKOUTS[k], cleared = history.some(x => x.key === k && new Date(x.createdAt) >= weekStart(today));
+          {gates.map(k => {
+            const w = WORKOUTS[k], day = gateDay(k, profile), cleared = history.some(x => x.key === k && new Date(x.createdAt) >= weekStart(today));
             const isRed = k === 'D', isToday = k === todayW;
+            // gates ahead stay sealed until their day: the workout is a surprise
+            const sealed = !cleared && day > today.getDay();
+            const missed = !cleared && day < today.getDay();
             return (
-              <Pressable key={k} onPress={() => open(k)} style={({ pressed }) => ({ width: '47%', flexGrow: 1, borderWidth: 1, paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center', gap: 4,
-                borderColor: isRed ? 'rgba(255,45,79,0.65)' : isToday ? t.edge : t.line,
+              <Pressable key={k} disabled={sealed} onPress={() => open(k)} style={({ pressed }) => ({ width: '47%', flexGrow: 1, borderWidth: 1, paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center', gap: 4,
+                borderColor: isRed && !sealed ? 'rgba(255,45,79,0.65)' : isToday ? t.edge : t.line, borderStyle: sealed ? 'dashed' : 'solid',
                 backgroundColor: pressed ? 'rgba(150,215,255,0.12)' : cleared ? 'rgba(89,232,255,0.07)' : 'rgba(4,10,24,0.6)',
-                boxShadow: isRed ? `0 0 12px ${t.warnGlow}` : isToday ? `0 0 12px ${t.glow}` : undefined })}>
-                <Text style={{ color: isRed ? t.warn : t.bright, fontFamily: F.bold, fontSize: 16 }}>{w.short}</Text>
-                <Caps size={10} glow={false} style={{ color: cleared ? t.good : isRed ? t.warn : t.muted }}>{cleared ? '✓ Cleared' : DAYS[w.day]}</Caps>
+                boxShadow: isRed && !sealed ? `0 0 12px ${t.warnGlow}` : isToday ? `0 0 12px ${t.glow}` : undefined })}>
+                {sealed ? (
+                  <Row style={{ gap: 6 }}><Lock color={isRed ? t.warn : t.muted} size={13} /><Text style={{ color: isRed ? t.warn : t.muted, fontFamily: F.bold, fontSize: 16 }}>{isRed ? 'Red Gate' : '???'}</Text></Row>
+                ) : <Text style={{ color: isRed ? t.warn : t.bright, fontFamily: F.bold, fontSize: 16 }}>{w.short}</Text>}
+                <Caps size={10} glow={false} style={{ color: cleared ? t.good : missed ? t.warn : isRed ? t.warn : t.muted }}>
+                  {cleared ? '✓ Cleared' : missed ? 'Missed · ' + DAYS[day].slice(0, 3) : sealed ? 'Opens ' + DAYS[day] : isToday ? 'Today' : DAYS[day]}
+                </Caps>
               </Pressable>
             );
           })}
         </View>
       </View>
+      </>}
     </>
   );
 }
@@ -180,6 +197,7 @@ function HomeStatus({ profile, history, today }: { profile: Profile; history: Re
           <View>
             <Caps size={10} glow={false} style={{ color: t.muted }}>{'Player: ' + profile.name}</Caps>
             <Text style={{ color: t.bright, fontFamily: F.bold, fontSize: 28, lineHeight: 34 }}>{'Level ' + p.level}</Text>
+            <Caps size={10} color={t.accent} glow={false}>{gradeFor(p.level)}</Caps>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Caps size={10} glow={false} style={{ color: t.muted }}>Rank</Caps>
@@ -212,13 +230,14 @@ function WeekStrip({ history, profile, today }: { history: Rec[]; profile: Profi
         const done = onDay(history, d, QUEST_KEYS), past = d.getTime() < t0, isToday = d.getTime() === t0;
         const missed = past && !done && d >= start;
         const c = done ? t.good : missed ? t.warn : isToday ? t.bright : t.dim;
-        const gate = todaysWorkout(d);
+        const gate = todaysWorkout(d, profile);
         return (
-          <View key={i} style={{ flex: 1, alignItems: 'center', gap: 4, paddingVertical: 8, borderWidth: 1, borderColor: isToday ? t.edge : done ? 'rgba(89,232,255,0.35)' : t.line,
-            backgroundColor: done ? 'rgba(89,232,255,0.08)' : 'rgba(0,0,0,0.25)', boxShadow: isToday ? `0 0 10px ${t.glow}` : undefined }}>
-            <Caps size={10} glow={false} style={{ color: isToday ? t.bright : t.muted, letterSpacing: 1 }}>{DAY_LETTERS[i]}</Caps>
+          <View key={i} style={{ flex: 1, alignItems: 'center', gap: 4, paddingVertical: 8, borderWidth: 1, borderColor: missed ? t.warn : isToday ? t.edge : done ? 'rgba(89,232,255,0.35)' : t.line,
+            backgroundColor: missed ? 'rgba(255,45,79,0.16)' : done ? 'rgba(89,232,255,0.08)' : 'rgba(0,0,0,0.25)', boxShadow: missed ? `0 0 8px ${t.warnGlow}` : isToday ? `0 0 10px ${t.glow}` : undefined }}>
+            <Caps size={10} glow={false} style={{ color: missed ? t.warn : isToday ? t.bright : t.muted, letterSpacing: 1 }}>{DAY_LETTERS[i]}</Caps>
             <Text style={{ color: c, fontFamily: F.bold, fontSize: 13 }}>{done ? '✓' : missed ? '✕' : d.getDate()}</Text>
-            <View style={{ width: 4, height: 4, transform: [{ rotate: '45deg' }], backgroundColor: gate ? (gate === 'D' ? t.warn : t.bright) : 'transparent' }} />
+            {missed ? <Text style={{ color: t.warn, fontFamily: F.bold, fontSize: 6.5, letterSpacing: 0.5 }}>PENALTY</Text>
+              : <View style={{ width: 4, height: 4, transform: [{ rotate: '45deg' }], backgroundColor: gate ? (gate === 'D' ? t.warn : t.bright) : 'transparent' }} />}
           </View>
         );
       })}
@@ -231,8 +250,9 @@ function WeighIn({ g, last }: { g: ReturnType<typeof useGame>; last?: number }) 
   const [kg, setKg] = useState('');
   return (
     <Appear delay={200}>
-      <Win title="WEIGH-IN" icon="i">
-        <T style={{ textAlign: 'center', fontSize: 14 }}>Weekly weigh-in. In the morning, before eating. +20 XP</T>
+      <Win title="WEEKLY QUEST" icon="!">
+        <T style={{ textAlign: 'center', fontFamily: F.semi, fontSize: 16, color: t.bright }}>Weigh-in</T>
+        <T muted style={{ textAlign: 'center', fontSize: 13 }}>Once a week, in the morning before eating. Reward: 20 XP</T>
         <Row>
           <TextInput value={kg} onChangeText={setKg} keyboardType="decimal-pad" placeholder={last ? String(last) : '80.0'} placeholderTextColor={t.muted}
             style={{ flex: 1, minWidth: 0, width: 80, borderWidth: 1, borderColor: t.line, color: t.bright, fontFamily: F.semi, fontSize: 20, textAlign: 'center', padding: 8, backgroundColor: 'rgba(0,0,0,0.3)' }} />
@@ -260,7 +280,7 @@ function StatusTab({ profile, history }: { profile: Profile; history: Rec[] }) {
               <Caps size={10} glow={false} style={{ color: t.muted }}>Name</Caps>
               <T glow style={{ fontFamily: F.semi, fontSize: 20, color: t.bright }}>{profile.name}</T>
               <Caps size={10} glow={false} style={{ color: t.muted, marginTop: 6 }}>Title</Caps>
-              <T style={{ fontSize: 14 }}>{p.level >= 10 ? 'Hunter' : p.level >= 5 ? 'Awakened' : 'Player'}</T>
+              <T style={{ fontSize: 14, color: t.accent }}>{gradeFor(p.level)}</T>
             </View>
             <View style={{ alignItems: 'center' }}>
               <Caps size={10} glow={false} style={{ color: t.muted }}>Level</Caps>
@@ -316,7 +336,7 @@ function StatusTab({ profile, history }: { profile: Profile; history: Rec[] }) {
               const on = got.includes(a[0]);
               return (
                 <View key={a[0]} style={{ width: '47%', flexGrow: 1, borderWidth: 1, borderColor: on ? t.secret : t.line, padding: 10, gap: 2, backgroundColor: on ? 'rgba(170,120,255,0.08)' : 'rgba(0,0,0,0.25)' }}>
-                  <T style={{ fontFamily: F.semi, fontSize: 13, color: on ? t.secret : t.dim }}>{on ? a[0] : '???'}</T>
+                  <Row style={{ gap: 6 }}>{on ? null : <Lock color={t.dim} size={12} />}<T style={{ fontFamily: F.semi, fontSize: 13, color: on ? t.secret : t.dim }}>{on ? a[0] : '???'}</T></Row>
                   <T muted style={{ fontSize: 11, lineHeight: 16 }}>{on ? a[1] : 'Hint: ' + a[2]}</T>
                 </View>
               );
@@ -324,17 +344,20 @@ function StatusTab({ profile, history }: { profile: Profile; history: Rec[] }) {
           </View>
         </Win>
       </Appear>
+      <History history={history} />
     </>
   );
 }
 
-// ---------- LOG
-function LogTab({ history }: { history: Rec[] }) {
+// ---------- recent quests, at the bottom of Status
+function History({ history }: { history: Rec[] }) {
   const t = useT();
+  const [all, setAll] = useState(false);
+  const list = history.slice(0, all ? 60 : 5);
   return (
-    <Appear>
-      <Win title="QUEST LOG" icon="i">
-        {!history.length ? <T muted style={{ textAlign: 'center' }}>Completed quests will appear here.</T> : history.slice(0, 40).map((x, i) => (
+    <Appear delay={200}>
+      <Win title="QUEST HISTORY" icon="i">
+        {!history.length ? <T muted style={{ textAlign: 'center' }}>Completed quests will appear here.</T> : list.map((x, i) => (
           <View key={x.createdAt} style={{ gap: 2, paddingTop: i ? 10 : 0, borderTopWidth: i ? 1 : 0, borderColor: t.line }}>
             <Row style={{ justifyContent: 'space-between' }}>
               <T style={{ fontFamily: F.semi, fontSize: 14, color: x.key === 'D' || x.key === 'P' ? t.warn : t.fg }}>{x.key === 'W' ? 'Weigh-in: ' + x.kg + ' kg' : WORKOUTS[x.key as WorkoutKey]?.name || KEY_NAMES[x.key] || x.key}</T>
@@ -343,8 +366,18 @@ function LogTab({ history }: { history: Rec[] }) {
             <T muted style={{ fontSize: 12 }}>{new Date(x.createdAt).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + (x.score && x.key !== 'S' && x.key !== 'W' ? ' · ' + x.score : '') + (x.feel ? ' · felt ' + x.feel + '/5' : '')}</T>
           </View>
         ))}
+        {history.length > 5 ? <Btn small label={all ? 'Show less' : 'Show all ' + history.length} onPress={() => setAll(!all)} style={{ alignSelf: 'center' }} /> : null}
       </Win>
     </Appear>
+  );
+}
+
+function Lock({ color, size = 14 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 16 16">
+      <Path d="M4.5 7V5a3.5 3.5 0 0 1 7 0v2" fill="none" stroke={color} strokeWidth={1.6} />
+      <Rect x={2.5} y={7} width={11} height={8} fill={color} />
+    </Svg>
   );
 }
 

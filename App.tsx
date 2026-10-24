@@ -37,7 +37,7 @@ export default function App() {
               <Main profile={profile} history={history} setHistory={setHistory} onRedGate={setRed} />
             ) : (
               <View style={{ flex: 1, justifyContent: 'center', padding: 20 }}>
-                <Onboarding onDone={name => { const p = { name, startDate: ymd(new Date()), rank: 'E' }; store.saveProfile(p); setProfile(p); }} />
+                <Onboarding onDone={(name, days) => { const p = { name, startDate: ymd(new Date()), rank: 'E', days }; store.saveProfile(p); setProfile(p); }} />
               </View>
             )}
           </View>

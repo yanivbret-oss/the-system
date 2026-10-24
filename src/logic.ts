@@ -6,7 +6,7 @@ export type Rec = {
   exercises: { name: string; rx: string; sec?: number; done: boolean }[];
   score: string; feel: number | null; hard: string; kg?: number;
 };
-export type Profile = { name: string; startDate: string; rank: string };
+export type Profile = { name: string; startDate: string; rank: string; days?: number[] };
 export type ItemState = { sec: number; runningSince?: number | null; done?: boolean; sets?: boolean[]; rounds?: number; lastBeepMin?: number; endBeeped?: boolean };
 export type Session = {
   v: 3; key: string; week: number; day: string; startedAt: number | null; endedAt: number | null;
@@ -36,7 +36,14 @@ export function weeksIn(p: Profile, today: Date) {
 }
 // The 4-week block repeats until adaptive plans arrive
 export const planWeek = (n: number) => ((Math.max(1, n) - 1) % 4) + 1;
-export const todaysWorkout = (today: Date) => ORDER.find(k => WORKOUTS[k].day === today.getDay());
+// The player picks 3 or 4 training days: gates A, B, C go on the first three, the Red Gate on the fourth
+export const DEFAULT_DAYS = [1, 3, 5, 6];
+export const gatesFor = (p: Profile) => ORDER.slice(0, Math.min(4, (p.days || DEFAULT_DAYS).length));
+export const gateDay = (k: string, p: Profile) => [...(p.days || DEFAULT_DAYS)].sort((a, b) => a - b)[ORDER.indexOf(k as never)];
+export const todaysWorkout = (today: Date, p: Profile) => gatesFor(p).find(k => gateDay(k, p) === today.getDay());
+// Titles by level, from the lowest soldier to the top of the army
+export const GRADES: [number, string][] = [[1, 'Normal'], [5, 'Elite'], [10, 'Knight'], [20, 'Elite Knight'], [30, 'General'], [45, 'Marshal'], [60, 'Grand Marshal']];
+export const gradeFor = (level: number) => GRADES.filter(([l]) => level >= l).pop()![1] + ' Grade';
 
 export const fmt = (s: number) => { s = Math.max(0, Math.round(s)); const m = Math.floor(s / 60), r = s % 60; return String(m).padStart(2, '0') + ':' + String(r).padStart(2, '0'); };
 export const rxFor = (it: Item, week: number) => it.rx.length === 4 ? it.rx[week - 1] : it.rx[0];

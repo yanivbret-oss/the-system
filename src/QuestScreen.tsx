@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, ScrollViewInstance, Linking } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, ScrollViewInstance } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Header, useT } from './ui';
 import { F } from './theme';
 import { WORKOUTS, QUESTS, XP, MOVES, HOW, Item, WorkoutKey } from './data';
@@ -26,7 +27,6 @@ export function QuestScreen({ g, onBack }: { g: Game; onBack: () => void }) {
         <Pressable onPress={onBack} disabled={g.running} hitSlop={12} style={{ opacity: g.running ? 0.3 : 1 }}>
           <Caps size={12}>‹ Back</Caps>
         </Pressable>
-        <Caps size={11} glow={false} style={{ color: useT().muted }}>{'Cycle week ' + s.week + ' / 4'}</Caps>
       </Row>
       <ScrollView ref={scroll} contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 14 }} stickyHeaderIndices={isCounter ? undefined : [1]}>
         {isCounter ? <CounterQuest g={g} /> : <WorkoutTop g={g} />}
@@ -46,9 +46,6 @@ function WorkoutTop({ g }: { g: Game }) {
           <Caps size={20} color={t.bright}>{W.name}</Caps>
           <T muted style={{ fontSize: 13 }}>{W.items.length + ' exercises · reward ' + (XP[s.key] || 0) + ' XP'}</T>
         </View>
-        <Row style={{ justifyContent: 'center' }}>
-          {[1, 2, 3, 4].map(w => <Btn key={w} small label={'W' + w} on={w === s.week} disabled={g.running} onPress={() => g.actions.setWeek(w)} style={{ minWidth: 52 }} />)}
-        </Row>
       </Win>
     </Appear>
   );
@@ -114,7 +111,7 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
   const t = useT();
   const st = s.items[it.id] || { sec: 0 }, active = s.active === it.id, nSets = setsFor(it, s.week);
   const sec = itemSec(st), cd = cdFor(it, s.week);
-  const timer = cd ? (sec >= cd ? "TIME'S UP" : fmt(cd - sec)) : sec ? fmt(sec) : '';
+  const timer = cd ? (sec >= cd ? "TIME'S UP" : fmt(cd - sec)) : '';
   const live = !!s.startedAt && !s.endedAt;
   if (st.done && !active) {
     return (
@@ -186,22 +183,24 @@ function CounterQuest({ g }: { g: Game }) {
           <T glow style={{ fontFamily: F.semi, fontSize: 18, textAlign: 'center', color: t.bright }}>{Qd.title}</T>
         </View>
         <Caps size={12} style={{ textAlign: 'center' }}>Goals</Caps>
+        <T muted style={{ fontSize: 13, textAlign: 'center', marginTop: -6 }}>Tap each goal when you finish it.</T>
         {goals.map(x => {
           const n = Math.min(count(x.id, x.timer), x.target), met = n >= x.target;
+          const toggle = () => { if (!s.saved && !(x.timer && s.plankSince)) g.actions.count(x.id, met ? -x.target : x.target, x.target); };
           return (
             <View key={x.id} style={{ gap: 8 }}>
-              <Row style={{ justifyContent: 'space-between' }}>
-                <Row><Check on={met} color={t.good} /><T style={{ fontFamily: F.semi, color: met ? t.good : t.fg }}>{x.label}</T></Row>
-                <Num size={20} color={met ? t.good : t.bright}>{'[' + n + '/' + x.target + (x.unit || '') + ']'}</Num>
-              </Row>
-              <Row style={{ paddingLeft: 30, flexWrap: 'wrap' }}>
-                {x.timer
-                  ? <Btn small primary label={s.plankSince ? 'Stop' : n ? 'Resume timer' : 'Start timer'} disabled={met || !!s.saved} onPress={() => g.actions.plank(x.id, x.target)} />
-                  : <>
-                      {x.steps!.map(v => <Btn key={v} small label={'+' + v} disabled={met || !!s.saved} style={{ minWidth: 50 }} onPress={() => g.actions.count(x.id, v, x.target)} />)}
-                      <Btn small label="−1" disabled={!n || !!s.saved} style={{ minWidth: 50 }} onPress={() => g.actions.count(x.id, -1, x.target)} />
-                    </>}
-              </Row>
+              <Pressable onPress={toggle} accessibilityRole="checkbox" accessibilityState={{ checked: met }} accessibilityLabel={x.label}
+                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: 12, borderWidth: 1,
+                  borderColor: met ? 'rgba(89,232,255,0.45)' : t.line, backgroundColor: pressed ? 'rgba(150,215,255,0.12)' : met ? 'rgba(89,232,255,0.07)' : 'rgba(0,0,0,0.25)' })}>
+                <Row style={{ flex: 1 }}><Check on={met} color={t.good} /><T style={{ fontFamily: F.semi, fontSize: 16, color: met ? t.good : t.fg }}>{x.label}</T></Row>
+                <Num size={20} color={met ? t.good : t.bright}>{x.timer && s.plankSince ? n + 's' : x.target + (x.unit || '')}</Num>
+              </Pressable>
+              {x.timer && !met ? (
+                <Row style={{ paddingLeft: 30 }}>
+                  <Btn small primary label={s.plankSince ? 'Stop timer' : n ? 'Resume timer' : 'Start timer'} disabled={!!s.saved} onPress={() => g.actions.plank(x.id, x.target)} />
+                  <T muted style={{ fontSize: 12 }}>or tap when done</T>
+                </Row>
+              ) : null}
               <View style={{ paddingLeft: 30 }}><HowTo keys={HOW[x.how]} /></View>
             </View>
           );
@@ -225,7 +224,7 @@ function HowTo({ keys }: { keys?: string[] }) {
         <View key={k} style={{ gap: 4, paddingTop: 8, borderTopWidth: 1, borderColor: t.line }}>
           <T style={{ fontFamily: F.semi, fontSize: 14 }}>{MOVES[k][0]}</T>
           <T muted style={{ fontSize: 13, lineHeight: 20 }}>{MOVES[k][1]}</T>
-          <Pressable onPress={() => Linking.openURL('https://www.youtube.com/results?search_query=' + encodeURIComponent(MOVES[k][2]))}>
+          <Pressable onPress={() => WebBrowser.openBrowserAsync('https://www.youtube.com/results?search_query=' + encodeURIComponent(MOVES[k][2]), { toolbarColor: '#050b18', controlsColor: '#9fd8ff', presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET }).catch(() => {})}>
             <Caps size={10} color={t.accent} glow={false}>▶ Watch a demo</Caps>
           </Pressable>
         </View>

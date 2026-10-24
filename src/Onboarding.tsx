@@ -1,22 +1,43 @@
 import { useState } from 'react';
 import { View, TextInput } from 'react-native';
-import { Win, T, Btn, Row, Appear, useT } from './ui';
+import { Win, T, Btn, Row, Caps, Appear, useT } from './ui';
+import { DAYS } from './data';
+import { DEFAULT_DAYS } from './logic';
 import { F } from './theme';
 import { beep } from './sound';
 
 // The awakening: the System offers to make you a Player, then asks your name
-export function Onboarding({ onDone }: { onDone: (name: string) => void }) {
+export function Onboarding({ onDone }: { onDone: (name: string, days: number[]) => void }) {
   const t = useT();
-  const [step, setStep] = useState<'offer' | 'refused' | 'rules' | 'name'>('offer');
+  const [step, setStep] = useState<'offer' | 'refused' | 'rules' | 'name' | 'days'>('offer');
   const [name, setName] = useState('');
   const ok = name.trim().length > 0;
+  const [days, setDays] = useState<number[]>(DEFAULT_DAYS);
+  const nDays = days.length, daysOk = nDays === 3 || nDays === 4;
+
+  if (step === 'days') {
+    const flip = (d: number) => setDays(cur => cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d].sort((a, b) => a - b));
+    return (
+      <Appear key="days">
+        <Win title="TRAINING DAYS">
+          <T glow style={{ textAlign: 'center', fontSize: 16 }}>Which days will you enter a gate?</T>
+          <T muted style={{ textAlign: 'center', fontSize: 13, lineHeight: 20 }}>Pick 3 or 4 days. With 4, the last one is the Red Gate. Every other day gets the daily quest.</T>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+            {DAYS.map((d, i) => <Btn key={d} small label={d.slice(0, 3)} on={days.includes(i)} onPress={() => flip(i)} style={{ minWidth: 64 }} />)}
+          </View>
+          <Caps size={10} glow={false} style={{ textAlign: 'center', color: daysOk ? t.muted : t.warn }}>{nDays + ' days selected' + (daysOk ? '' : ' · choose 3 or 4')}</Caps>
+          <Btn primary big label="Confirm" disabled={!daysOk || !ok} onPress={() => { beep(1175, true); onDone(name.trim(), days); }} />
+        </Win>
+      </Appear>
+    );
+  }
 
   if (step === 'rules') {
     const rules: [string, string][] = [
       ['DAILY QUEST', 'One quest every day, cleared before midnight. On rest days it is push-ups, squats and a plank.'],
-      ['GATES', 'Monday, Wednesday and Friday are training days. The workout is that day\'s quest.'],
-      ['RED GATE', 'Saturday is the hardest gate. Double XP.'],
-      ['PENALTY', 'Miss a daily quest and the penalty zone opens the next day.'],
+      ['GATES', 'You choose 3 or 4 training days. On those days the workout is the quest, and it stays sealed until the day comes.'],
+      ['RED GATE', 'Train 4 days and your last gate of the week is the Red Gate. The hardest one. Double XP.'],
+      ['PENALTY', 'Miss a day and the penalty zone opens the next morning. Nothing else unlocks until it is cleared.'],
     ];
     return (
       <Appear key="rules">
@@ -39,14 +60,14 @@ export function Onboarding({ onDone }: { onDone: (name: string) => void }) {
   if (step === 'name') {
     return (
       <Appear key="name">
-        <Win title="PLAYER REGISTRATION">
+        <Win title="PLAYER AWAKENING">
           <T glow style={{ textAlign: 'center', fontSize: 16 }}>What should the System call you?</T>
           <TextInput
             value={name} onChangeText={setName} placeholder="Player name" placeholderTextColor={t.muted} maxLength={20} autoFocus
-            autoCapitalize="words" onSubmitEditing={() => ok && onDone(name.trim())}
+            autoCapitalize="words" onSubmitEditing={() => ok && setStep('days')}
             style={{ borderWidth: 1, borderColor: t.edge, color: t.bright, fontFamily: F.semi, fontSize: 20, letterSpacing: 2, textAlign: 'center', padding: 12, backgroundColor: 'rgba(0,0,0,0.4)' }}
           />
-          <Btn primary big label="Confirm" disabled={!ok} onPress={() => { beep(1175, true); onDone(name.trim()); }} />
+          <Btn primary big label="Next" disabled={!ok} onPress={() => { beep(880); setStep('days'); }} />
         </Win>
       </Appear>
     );

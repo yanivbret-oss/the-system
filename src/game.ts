@@ -13,7 +13,7 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
   const today = new Date();
   const todayStr = today.toDateString();
   const week = planWeek(weeksIn(profile, today));
-  const todayW = todaysWorkout(today);
+  const todayW = todaysWorkout(today, profile);
 
   const fresh = (key: string, w = week): Session => ({ v: 3, key, week: w, day: todayStr, startedAt: null, endedAt: null, items: {}, active: null, feel: 0 });
   const [s, setS] = useState<Session | null>(null);

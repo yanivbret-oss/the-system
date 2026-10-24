@@ -157,8 +157,9 @@ export function Rail({ flip }: { flip?: boolean }) {
         <View style={{ position: 'absolute', top: 2, left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,255,0.85)' }} />
       </View>
       <View style={{ position: 'absolute', [flip ? 'top' : 'bottom']: 0, left: '12%', right: '12%', height: 2, backgroundColor: t.accent, opacity: 0.6 }} />
-      <View style={{ position: 'absolute', [flip ? 'top' : 'bottom']: -3, left: '30%', width: 40, height: 3, backgroundColor: t.bright, opacity: 0.7 }} />
-      <View style={{ position: 'absolute', [flip ? 'top' : 'bottom']: -3, right: '22%', width: 18, height: 3, backgroundColor: t.bright, opacity: 0.5 }} />
+      {/* the bottom rail sits on the tab bar, where these marks would read as a selected tab */}
+      {!flip && <View style={{ position: 'absolute', bottom: -3, left: '30%', width: 40, height: 3, backgroundColor: t.bright, opacity: 0.7 }} />}
+      {!flip && <View style={{ position: 'absolute', bottom: -3, right: '22%', width: 18, height: 3, backgroundColor: t.bright, opacity: 0.5 }} />}
     </View>
   );
 }

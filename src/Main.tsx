@@ -136,8 +136,9 @@ function QuestTab({ g, profile, history, open, onStatus, onWeigh }: { g: ReturnT
   // the weekly weigh-in is a quest from the first day of the week until it is done
   const weighDue = !ws.some(x => new Date(x.createdAt) >= weekStart(today));
   const gates = gatesFor(profile);
-  const midnight = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).getTime();
-  const left = Math.max(0, (midnight - Date.now()) / 1000);
+  // counted on the wall clock, so a daylight-saving day still shows 23:47 at 00:12, not 24:47
+  const now = new Date();
+  const left = Math.max(0, 86400 - (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()));
   const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60);
   const pad = (n: number) => String(n).padStart(2, '0');
   const goals: [string, string][] = todayW

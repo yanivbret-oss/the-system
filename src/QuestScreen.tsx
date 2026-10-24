@@ -152,6 +152,7 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
           {it.note ? <T muted style={{ fontSize: 14, lineHeight: 20 }}>{it.note}</T> : null}
         </View>
       </Row>
+      <Demo k={(it.how || HOW[it.id] || []).find(k => DEMOS[k])} size={active ? 240 : 180} />
       {nSets ? (
         <Row style={{ flexWrap: 'wrap', paddingLeft: 34 }}>
           {Array.from({ length: nSets }, (_, i) => {
@@ -179,7 +180,6 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
             : <Btn small label="Undo" onPress={() => g.actions.undoItem(it.id)} />) : null}
         </Row>
       ) : null}
-      {active ? <Demo k={(it.how || HOW[it.id] || []).find(k => DEMOS[k])} /> : null}
       <View style={{ paddingLeft: 34 }}><HowTo keys={it.how || HOW[it.id]} /></View>
     </View>
   );
@@ -225,6 +225,7 @@ function CounterQuest({ g }: { g: Game }) {
                     <T muted style={{ fontSize: 12 }}>or tap the goal when done</T>
                   </Row>
                 ) : null}
+                <Demo k={HOW[x.how]?.find(k => DEMOS[k])} size={180} />
                 {how === x.id ? <HowTo keys={HOW[x.how]} open /> : null}
               </View>
             );
@@ -251,7 +252,6 @@ function HowTo({ keys, open: forced }: { keys?: string[]; open?: boolean }) {
       {open ? keys.map(k => (
         <View key={k} style={{ gap: 4, paddingTop: 8, borderTopWidth: 1, borderColor: t.line }}>
           <T style={{ fontFamily: F.semi, fontSize: 14 }}>{MOVES[k][0]}</T>
-          {DEMOS[k] ? <Demo k={k} /> : null}
           <T muted style={{ fontSize: 13, lineHeight: 20 }}>{MOVES[k][1]}</T>
           <Pressable onPress={() => WebBrowser.openBrowserAsync('https://www.youtube.com/results?search_query=' + encodeURIComponent(MOVES[k][2]), { toolbarColor: '#050b18', controlsColor: '#9fd8ff', presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET }).catch(() => {})}>
             <Caps size={10} color={t.accent} glow={false}>▶ Watch a demo</Caps>

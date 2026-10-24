@@ -24,16 +24,20 @@ jobs:
       - name: Use the Play upload key
         env:
           UPLOAD_KEYSTORE_BASE64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
+          RAW_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
         run: |
           if [ -z "$UPLOAD_KEYSTORE_BASE64" ]; then echo "No upload key secret: building with the debug key only"; exit 0; fi
-          echo "$UPLOAD_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          # pasted secrets often carry a stray space or newline
+          echo "$UPLOAD_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 -d > "$RUNNER_TEMP/upload.jks"
+          PW=$(printf %s "$RAW_PASSWORD" | tr -d '[:space:]')
+          echo "::add-mask::$PW"
+          keytool -list -keystore "$RUNNER_TEMP/upload.jks" -storepass "$PW" -alias upload > /dev/null || { echo "::error::The upload key secrets do not match: check UPLOAD_KEYSTORE_PASSWORD"; exit 1; }
+          echo "UPLOAD_KEYSTORE_PASSWORD=$PW" >> "$GITHUB_ENV"
           echo "UPLOAD_STORE_FILE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
           echo "AAB=bundleRelease" >> "$GITHUB_ENV"
           node tools/sign-release.js
       - run: ./gradlew assembleRelease $AAB --no-daemon
         working-directory: android
-        env:
-          UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
       - run: |
           cp android/app/build/outputs/apk/release/app-release.apk TheSystem.apk
           if [ -f android/app/build/outputs/bundle/release/app-release.aab ]; then cp android/app/build/outputs/bundle/release/app-release.aab TheSystem.aab; fi

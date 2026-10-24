@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
-import { Montserrat_400Regular, Montserrat_500Medium, Montserrat_600SemiBold, Montserrat_700Bold } from '@expo-google-fonts/montserrat';
+import { Jost_400Regular, Jost_500Medium, Jost_600SemiBold, Jost_700Bold } from '@expo-google-fonts/jost';
 import { BLUE, RED } from './src/theme';
 import { ThemeCtx, Rail, Backdrop } from './src/ui';
 import { Onboarding } from './src/Onboarding';
@@ -12,7 +12,7 @@ import { Profile, Rec, store, ymd } from './src/logic';
 import { initSound } from './src/sound';
 
 export default function App() {
-  const [fonts] = useFonts({ Montserrat_400Regular, Montserrat_500Medium, Montserrat_600SemiBold, Montserrat_700Bold });
+  const [fonts] = useFonts({ Jost_400Regular, Jost_500Medium, Jost_600SemiBold, Jost_700Bold });
   const [profile, setProfile] = useState<Profile | null | undefined>(undefined);
   const [history, setHistory] = useState<Rec[]>([]);
   const [red, setRed] = useState(false);

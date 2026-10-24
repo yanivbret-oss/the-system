@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useRef, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useId, ReactNode } from 'react';
 import { View, Text, Pressable, Animated, TextProps, ViewStyle, TextStyle, StyleProp } from 'react-native';
-import Svg, { Line, Circle, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import Svg, { Line, Circle, Defs, LinearGradient, RadialGradient, Stop, Rect, Polygon, Polyline } from 'react-native-svg';
 import { BLUE, F, Theme } from './theme';
 
 export const ThemeCtx = createContext<Theme>(BLUE);
@@ -40,45 +40,71 @@ export function Appear({ children, delay = 0, style }: { children: ReactNode; de
   );
 }
 
-// Thin bright corner brackets that sit on a window's corners
-function Corners({ color, size = 10 }: { color: string; size?: number }) {
-  const b = { position: 'absolute' as const, width: size, height: size, borderColor: color };
+// The window frame, drawn to the window's size: cut corners, a soft outer glow, a thin bright edge,
+// a fainter inner edge, and bright accents on the cut corners. "hero" windows add neon bars on the
+// sides and a crest at the top, like the System's big notification frames.
+function Frame({ w, h, edge, glow, bright, hero, glassTop, glassBottom }: { w: number; h: number; edge: string; glow: string; bright: string; hero?: boolean; glassTop: string; glassBottom: string }) {
+  const id = 'g' + useId().replace(/[^a-zA-Z0-9]/g, '');
+  const c = 14, k = 6;
+  const poly = (o: number, cut: number) => [[cut + o, o], [w - cut - o, o], [w - o, cut + o], [w - o, h - cut - o], [w - cut - o, h - o], [cut + o, h - o], [o, h - cut - o], [o, cut + o]].map(p => p.join(',')).join(' ');
+  const outer = poly(1, c), inner = poly(k, c - 3);
+  const cx = w / 2;
   return (
-    <>
-      <View pointerEvents="none" style={[b, { top: -1, left: -1, borderTopWidth: 2, borderLeftWidth: 2 }]} />
-      <View pointerEvents="none" style={[b, { top: -1, right: -1, borderTopWidth: 2, borderRightWidth: 2 }]} />
-      <View pointerEvents="none" style={[b, { bottom: -1, left: -1, borderBottomWidth: 2, borderLeftWidth: 2 }]} />
-      <View pointerEvents="none" style={[b, { bottom: -1, right: -1, borderBottomWidth: 2, borderRightWidth: 2 }]} />
-    </>
+    <Svg pointerEvents="none" width={w} height={h} style={{ position: 'absolute', left: 0, top: 0 }}>
+      <Defs>
+        <LinearGradient id={id} x1="0" y1="0" x2="0.35" y2="1">
+          <Stop offset="0" stopColor={glassTop} />
+          <Stop offset="0.7" stopColor={glassBottom} />
+        </LinearGradient>
+      </Defs>
+      <Polygon points={outer} fill={'url(#' + id + ')'} />
+      {/* diagonal light streaks across the glass */}
+      <Line x1={w * 0.62} y1={0} x2={w * 0.18} y2={h} stroke={bright} strokeOpacity={0.05} strokeWidth={1} />
+      <Line x1={w * 0.95} y1={0} x2={w * 0.55} y2={h} stroke={bright} strokeOpacity={0.04} strokeWidth={0.6} />
+      {hero ? <Polygon points={outer} fill="none" stroke={glow} strokeWidth={16} strokeOpacity={0.22} /> : null}
+      <Polygon points={outer} fill="none" stroke={glow} strokeWidth={hero ? 7 : 5} strokeOpacity={0.5} />
+      <Polygon points={outer} fill="none" stroke={edge} strokeWidth={1.2} />
+      <Polygon points={inner} fill="none" stroke={edge} strokeOpacity={0.28} strokeWidth={0.8} />
+      {/* bright accents on the four cut corners */}
+      {[[1, c + 1, c + 1, 1], [w - c - 1, 1, w - 1, c + 1], [w - 1, h - c - 1, w - c - 1, h - 1], [c + 1, h - 1, 1, h - c - 1]].map(([x1, y1, x2, y2], n) => (
+        <Line key={n} x1={x1} y1={y1} x2={x2} y2={y2} stroke={bright} strokeWidth={2.4} />
+      ))}
+      {hero ? <>
+        {/* neon bars on both sides */}
+        {[1.5, w - 1.5].map(x => (
+          <Line key={x} x1={x} y1={h * 0.28} x2={x} y2={h * 0.72} stroke={glow} strokeWidth={18} strokeOpacity={0.5} />
+        ))}
+        {/* electric sparks along the neon bars */}
+        {[0, 1].map(side => {
+          const x = side ? w - 2 : 2, d = side ? -1 : 1;
+          return [0.33, 0.47, 0.62].map((f, n) => {
+            const y = h * f;
+            return <Polyline key={side + '-' + n} points={`${x},${y} ${x + d * 7},${y + 5} ${x + d * 3},${y + 10} ${x + d * 11},${y + 17}`} fill="none" stroke={bright} strokeOpacity={0.7} strokeWidth={0.9} />;
+          });
+        })}
+        {[1.5, w - 1.5].map(x => (
+          <Line key={'b' + x} x1={x} y1={h * 0.3} x2={x} y2={h * 0.7} stroke={bright} strokeWidth={3} />
+        ))}
+        {/* crest at the top and a notch at the bottom */}
+        <Polyline points={`${cx - 34},1 ${cx - 12},1 ${cx},9 ${cx + 12},1 ${cx + 34},1`} fill="none" stroke={bright} strokeWidth={2.4} />
+        <Polygon points={`${cx - 4},1 ${cx},6 ${cx + 4},1`} fill={bright} />
+        <Polyline points={`${cx - 22},${h - 1} ${cx - 8},${h - 1} ${cx},${h - 6} ${cx + 8},${h - 1} ${cx + 22},${h - 1}`} fill="none" stroke={bright} strokeWidth={2} />
+      </> : null}
+    </Svg>
   );
 }
 
-// Faint diagonal light streaks across the glass
-function Sheen() {
-  return (
-    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', opacity: 0.5 }}>
-      <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <Line x1="62" y1="0" x2="18" y2="100" stroke="rgba(200,235,255,0.07)" strokeWidth="0.6" />
-        <Line x1="70" y1="0" x2="30" y2="100" stroke="rgba(200,235,255,0.05)" strokeWidth="0.3" />
-        <Line x1="96" y1="0" x2="58" y2="100" stroke="rgba(200,235,255,0.06)" strokeWidth="0.4" />
-        <Line x1="30" y1="0" x2="-8" y2="100" stroke="rgba(200,235,255,0.04)" strokeWidth="0.3" />
-      </Svg>
-    </View>
-  );
-}
-
-// A System window: dark glass, thin glowing edge, corner brackets, header of an icon box and a title box
-export function Win({ title, icon = '!', tone = 'normal', children, style, pad = 18 }: {
-  title?: string; icon?: string; tone?: Tone; children?: ReactNode; style?: StyleProp<ViewStyle>; pad?: number;
+// A System window: dark glass in a cut-corner neon frame, with a header of an icon box and a title box
+export function Win({ title, icon = '!', tone = 'normal', children, style, pad = 18, hero }: {
+  title?: string; icon?: string; tone?: Tone; children?: ReactNode; style?: StyleProp<ViewStyle>; pad?: number; hero?: boolean;
 }) {
   const t = useT();
   const edge = toneEdge(t, tone), glow = toneGlow(t, tone);
+  const [size, setSize] = useState({ w: 0, h: 0 });
   return (
-    <View style={[{ borderWidth: 1, borderColor: edge, padding: pad, gap: 14,
-      backgroundImage: `linear-gradient(165deg, ${t.glassTop} 0%, ${t.glassBottom} 70%)`, backgroundColor: t.glassBottom,
-      boxShadow: `0 0 18px ${glow}, inset 0 0 30px ${glow}` }, style]}>
-      <Sheen />
-      <Corners color={tone === 'normal' ? t.bright : edge} />
+    <View onLayout={e => { const { width, height } = e.nativeEvent.layout; if (width !== size.w || height !== size.h) setSize({ w: width, h: height }); }}
+      style={[{ padding: pad, paddingTop: pad + (hero ? 8 : 2), gap: 14 }, style]}>
+      {size.w ? <Frame w={size.w} h={size.h} edge={edge} glow={glow} bright={tone === 'normal' ? t.bright : edge} hero={hero} glassTop={t.glassTop} glassBottom={t.glassBottom} /> : null}
       {title ? <Header title={title} icon={icon} tone={tone} /> : null}
       {children}
     </View>
@@ -114,7 +140,7 @@ export function Btn({ label, onPress, primary, danger, gold, on, disabled, big, 
     <Pressable
       onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled, selected: on }}
       style={({ pressed }) => [{ borderWidth: 1, borderColor: c, paddingVertical: big ? 15 : small ? 6 : 10, paddingHorizontal: small ? 10 : 16, alignItems: 'center', justifyContent: 'center',
-        backgroundColor: pressed ? 'rgba(150, 215, 255, 0.18)' : on ? 'rgba(89, 232, 255, 0.1)' : primary ? 'rgba(80, 170, 255, 0.1)' : 'rgba(0, 0, 0, 0.3)',
+        backgroundColor: pressed ? 'rgba(150, 215, 255, 0.18)' : on ? 'rgba(89, 232, 255, 0.1)' : primary ? 'rgba(10, 30, 60, 0.55)' : 'rgba(0, 0, 0, 0.55)',
         boxShadow: `0 0 12px ${glow}, inset 0 0 10px ${glow}`, opacity: disabled ? 0.35 : 1, minHeight: small ? 36 : 44 }, style]}
     >
       <Caps size={big ? 15 : small ? 11 : 13} color={danger ? t.warn : gold ? t.gold : on ? t.good : t.bright} glow={!!(primary || danger || gold || on)}>{label}</Caps>
@@ -137,23 +163,61 @@ export function Rail({ flip }: { flip?: boolean }) {
   );
 }
 
-// Deep navy backdrop with faint diagonal streaks
+// Black backdrop with faint circuit traces, diagonal streaks and blue light bleeding in from the edges
+const CIRCUIT = (() => {
+  let seed = 7;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const dirs = [[1, 0], [0, 1], [1, 1], [-1, 1], [0, -1], [1, -1]];
+  return Array.from({ length: 46 }, () => {
+    let x = Math.round(rnd() * 400), y = Math.round(rnd() * 860);
+    const pts = [[x, y]];
+    for (let s = 0; s < 3 + Math.floor(rnd() * 3); s++) {
+      const [dx, dy] = dirs[Math.floor(rnd() * dirs.length)], len = 14 + rnd() * 50;
+      x += dx * len; y += dy * len; pts.push([Math.round(x), Math.round(y)]);
+    }
+    return { pts: pts.map(p => p.join(',')).join(' '), end: pts[pts.length - 1], o: 0.06 + rnd() * 0.1 };
+  });
+})();
+const VEINS = (() => {
+  let seed = 11;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  return [[-4, 140, 1], [404, 520, -1], [-4, 700, 1], [404, 60, -1]].map(([x0, y0, dir]) => {
+    const pts = [[x0, y0]]; let x = x0, y = y0;
+    for (let i = 0; i < 9; i++) { x += dir * (4 + rnd() * 14); y += 8 + rnd() * 26; pts.push([Math.round(x), Math.round(y)]); x -= dir * rnd() * 10; }
+    return pts.map(p => p.join(',')).join(' ');
+  });
+})();
 export function Backdrop() {
   const t = useT();
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-      <Svg width="100%" height="100%" viewBox="0 0 100 200" preserveAspectRatio="none">
+    <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: t.bg }}>
+      <Svg width="100%" height="100%" viewBox="0 0 400 860" preserveAspectRatio="xMidYMid slice">
         <Defs>
-          <LinearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={t.bgTop} />
-            <Stop offset="0.45" stopColor={t.bg} />
-            <Stop offset="1" stopColor={t.bg} />
+          <RadialGradient id="bgL" cx="0" cy="0.25" r="0.75">
+            <Stop offset="0" stopColor={t.rail} stopOpacity={0.32} />
+            <Stop offset="1" stopColor={t.rail} stopOpacity={0} />
+          </RadialGradient>
+          <RadialGradient id="bgR" cx="1" cy="0.72" r="0.7">
+            <Stop offset="0" stopColor={t.rail} stopOpacity={0.26} />
+            <Stop offset="1" stopColor={t.rail} stopOpacity={0} />
+          </RadialGradient>
+          <LinearGradient id="bgT" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={t.bgTop} stopOpacity={1} />
+            <Stop offset="0.35" stopColor={t.bg} stopOpacity={0} />
           </LinearGradient>
         </Defs>
-        <Rect x="0" y="0" width="100" height="200" fill="url(#bg)" />
-        {[10, 34, 55, 80, 120, 150].map((x, i) => (
-          <Line key={i} x1={x} y1="0" x2={x - 60} y2="200" stroke={t.accent} strokeOpacity={0.04 + (i % 3) * 0.015} strokeWidth={0.25 + (i % 2) * 0.3} />
+        <Rect x="0" y="0" width="400" height="860" fill="url(#bgT)" />
+        <Rect x="0" y="0" width="400" height="860" fill="url(#bgL)" />
+        <Rect x="0" y="0" width="400" height="860" fill="url(#bgR)" />
+        {[40, 120, 210, 300, 390, 480].map((x, i) => (
+          <Line key={i} x1={x} y1="0" x2={x - 260} y2="860" stroke={t.accent} strokeOpacity={0.05 + (i % 3) * 0.02} strokeWidth={0.6 + (i % 2) * 0.8} />
         ))}
+        {CIRCUIT.map((c, i) => (
+          <Polyline key={i} points={c.pts} fill="none" stroke={t.accent} strokeOpacity={c.o} strokeWidth={0.8} />
+        ))}
+        {CIRCUIT.map((c, i) => <Circle key={'n' + i} cx={c.end[0]} cy={c.end[1]} r={1.6} fill="none" stroke={t.accent} strokeOpacity={c.o * 1.6} strokeWidth={0.8} />)}
+        {VEINS.map((v, i) => <Polyline key={'vg' + i} points={v} fill="none" stroke={t.rail} strokeOpacity={0.25} strokeWidth={5} />)}
+        {VEINS.map((v, i) => <Polyline key={'v' + i} points={v} fill="none" stroke={t.good} strokeOpacity={0.55} strokeWidth={0.9} />)}
       </Svg>
     </View>
   );

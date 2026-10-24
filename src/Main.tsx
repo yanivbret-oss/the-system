@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView } from 'react-native';
-import Svg, { Polyline, Rect, Path } from 'react-native-svg';
+import Svg, { Polyline, Rect, Path, Circle } from 'react-native-svg';
 import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Ring, Meter, useT, Tone } from './ui';
 import { F } from './theme';
 import { WORKOUTS, QUESTS, XP, DAYS, DAY_LETTERS, KEY_NAMES, GEAR, Gear } from './data';
@@ -57,12 +57,38 @@ function TabBar({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
       {items.map(([k, label]) => {
         const on = k === tab;
         return (
-          <Pressable key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: 'center', paddingVertical: 14 }}>
+          <Pressable key={k} onPress={() => setTab(k)} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: on }} style={{ flex: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 8, gap: 5 }}>
             <View style={{ position: 'absolute', top: -1, left: '25%', right: '25%', height: 2, backgroundColor: on ? t.bright : 'transparent', boxShadow: on ? `0 0 10px 1px ${t.railGlow}` : undefined }} />
-            <Caps size={10} color={k === 'premium' ? t.gold : on ? t.bright : t.muted} glow={on} style={{ letterSpacing: 1.5, opacity: k === 'premium' && !on ? 0.75 : 1 }}>{label}</Caps>
+            <TabIcon k={k} color={k === 'premium' ? t.gold : on ? t.bright : t.muted} on={on} />
+            <Caps size={9} color={k === 'premium' ? t.gold : on ? t.bright : t.muted} glow={on} style={{ letterSpacing: 1.5, opacity: k === 'premium' && !on ? 0.75 : 1 }}>{label}</Caps>
           </Pressable>
         );
       })}
+    </View>
+  );
+}
+
+// Line icons in the System style: quest notice, status, crown, gear
+function TabIcon({ k, color, on }: { k: Tab; color: string; on: boolean }) {
+  const sw = 1.6, o = on ? 1 : 0.75;
+  return (
+    <View style={{ opacity: o, filter: on ? `drop-shadow(0 0 4px ${color})` : undefined }}>
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinejoin="round" strokeLinecap="round">
+        {k === 'quest' ? <>
+          <Rect x={3.5} y={3.5} width={17} height={17} />
+          <Path d="M12 7.5v6.5" /><Circle cx={12} cy={17} r={0.6} fill={color} />
+        </> : k === 'status' ? <>
+          <Circle cx={12} cy={8} r={3.5} />
+          <Path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" />
+        </> : k === 'premium' ? <>
+          <Path d="M3.5 8l4.5 4 4-6.5 4 6.5 4.5-4-1.8 10H5.3z" />
+          <Path d="M6 20.5h12" />
+        </> : <>
+          <Circle cx={12} cy={12} r={3} />
+          <Path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.9 1.9M16.6 16.6l1.9 1.9M5.5 18.5l1.9-1.9M16.6 7.4l1.9-1.9" />
+          <Circle cx={12} cy={12} r={6.2} />
+        </>}
+      </Svg>
     </View>
   );
 }
@@ -102,7 +128,7 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
       {penalty ? (
         <>
           <Appear>
-            <Win title="PENALTY" tone="penalty">
+            <Win hero title="PENALTY" tone="penalty">
               <T style={{ textAlign: 'center' }}>{"Yesterday's daily quest was not completed."}</T>
               <T style={{ textAlign: 'center', color: t.warn, fontFamily: F.semi }}>You have been moved to the Penalty Zone.</T>
               <T muted style={{ textAlign: 'center', fontSize: 13 }}>100 kettlebell swings and 30 burpees. Clear it to unlock today's quests.</T>
@@ -143,7 +169,7 @@ function QuestTab({ g, profile, history, open }: { g: ReturnType<typeof useGame>
         </Appear>
       ) : (
         <Appear delay={80}>
-          <Win title="DAILY QUEST">
+          <Win hero title="DAILY QUEST">
             <View style={{ alignItems: 'center', gap: 2 }}>
               <Caps size={11} glow={false} style={{ color: t.muted }}>{todayW ? 'Today’s training' : 'Rest day'}</Caps>
               <Text style={{ fontFamily: F.bold, fontSize: 22, textAlign: 'center', color: t.bright }}>{todayW ? g.wk(todayW).name : QUESTS.Q.title}</Text>
@@ -293,34 +319,41 @@ function StatusTab({ profile, history }: { profile: Profile; history: Rec[] }) {
   const premium = isPremium(profile, today);
   const ws = weights(history);
   const got = ACH.filter(a => a[3](history, today)).map(a => a[0]);
-  const stats: [string, string, number][] = [['STR', 'Strength', p.str], ['VIT', 'Endurance', p.end], ['AGI', 'Mobility', p.agi]];
+  const p0 = player(history.filter(x => x.createdAt < today.getTime() - 7 * 864e5));
+  const weekDone = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart(today)); d.setDate(d.getDate() + i); return onDay(history, d, QUEST_KEYS) ? 1 : 0; }).reduce((a: number, b) => a + b, 0);
   return (
     <>
       <Appear>
-        <Win title="STATUS" icon="i">
-          <Row style={{ justifyContent: 'space-between', alignItems: 'flex-end' }}>
-            <View>
-              <Caps size={10} glow={false} style={{ color: t.muted }}>Name</Caps>
-              <T glow style={{ fontFamily: F.semi, fontSize: 20, color: t.bright }}>{profile.name}</T>
-              <Caps size={10} glow={false} style={{ color: t.muted, marginTop: 6 }}>Title</Caps>
-              <T style={{ fontSize: 14, color: t.accent }}>{gradeFor(p.level)}</T>
+        <Win hero title="STATUS" icon="i">
+          <Row style={{ gap: 18, alignItems: 'center', paddingHorizontal: 4 }}>
+            <View style={{ alignItems: 'center', minWidth: 74 }}>
+              <Num size={50} style={{ lineHeight: 54 }}>{p.level}</Num>
+              <Caps size={11} color={t.bright}>Level</Caps>
             </View>
-            <View style={{ alignItems: 'center' }}>
-              <Caps size={10} glow={false} style={{ color: t.muted }}>Level</Caps>
-              <Num size={52}>{p.level}</Num>
-            </View>
-            <View style={{ alignItems: 'center' }}>
-              <Caps size={10} glow={false} style={{ color: t.muted }}>Rank</Caps>
-              <Num size={36} color={t.accent}>{profile.rank}</Num>
+            <View style={{ flex: 1, gap: 4 }}>
+              <InfoLine k="Name" v={profile.name} />
+              <InfoLine k="Job" v="Player" />
+              <InfoLine k="Title" v={gradeFor(p.level)} />
             </View>
           </Row>
-          <View style={{ gap: 6 }}>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <Caps size={10} glow={false} style={{ color: t.muted }}>Experience</Caps>
-              <Caps size={10} glow={false} style={{ color: t.muted }}>{p.into + ' / ' + p.need + ' XP'}</Caps>
-            </Row>
-            <Meter value={p.into / p.need} height={8} />
+          <View style={{ borderWidth: 1, borderColor: t.edge, padding: 12, gap: 10, backgroundColor: 'rgba(0,0,0,0.3)' }}>
+            <Bar label="EXP" value={p.into} max={p.need} color={t.accent} />
+            <Bar label="WEEK" value={weekDone} max={7} color={t.good} />
           </View>
+          <View style={{ borderWidth: 1, borderColor: t.edge, padding: 12, backgroundColor: 'rgba(0,0,0,0.3)', flexDirection: 'row', flexWrap: 'wrap', rowGap: 14 }}>
+            {([['str', 'STR', p.str, p.str - p0.str], ['vit', 'VIT', p.end, p.end - p0.end], ['agi', 'AGI', p.agi, p.agi - p0.agi]] as [string, string, number, number][]).map(([ic, k, v, d]) => (
+              <Row key={k} style={{ width: '50%', gap: 8 }}>
+                <StatIcon k={ic} color={t.bright} />
+                <T glow style={{ fontFamily: F.semi, fontSize: 16, color: t.bright }}>{k + ': ' + v}</T>
+                {d > 0 ? <Text style={{ color: '#58f08a', fontFamily: F.medium, fontSize: 13, textShadowColor: 'rgba(88,240,138,0.7)', textShadowRadius: 6 }}>{'(+' + d + ')'}</Text> : null}
+              </Row>
+            ))}
+            <Row style={{ width: '50%', gap: 8 }}>
+              <StatIcon k="rank" color={t.accent} />
+              <T glow style={{ fontFamily: F.semi, fontSize: 16, color: t.bright }}>{'RANK: '}<Text style={{ color: t.accent }}>{profile.rank}</Text></T>
+            </Row>
+          </View>
+          <Caps size={9} glow={false} style={{ color: t.muted, textAlign: 'center', marginTop: -6 }}>Green numbers: gained in the last 7 days</Caps>
           <Row style={{ gap: 4 }}>
             {RANKS.map(r => {
               const cur = r === profile.rank, locked = !premium && RANKS.indexOf(r) > RANKS.indexOf(FREE_RANK_CAP);
@@ -333,15 +366,6 @@ function StatusTab({ profile, history }: { profile: Profile; history: Rec[] }) {
               );
             })}
           </Row>
-          <Divider />
-          {stats.map(([k, name, v]) => (
-            <Row key={k} style={{ gap: 12 }}>
-              <Caps size={12} color={t.bright} style={{ width: 42 }}>{k}</Caps>
-              <View style={{ flex: 1 }}><Meter value={v / 100} /></View>
-              <Num size={16} style={{ width: 34, textAlign: 'right' }}>{v}</Num>
-              <T muted style={{ fontSize: 11, width: 74 }}>{name}</T>
-            </Row>
-          ))}
           <Divider />
           <Row style={{ justifyContent: 'space-around' }}>
             <View style={{ alignItems: 'center' }}><Num size={22}>{streak(history, today)}</Num><Caps size={9} glow={false} style={{ color: t.muted }}>Day streak</Caps></View>
@@ -516,6 +540,43 @@ function Settings({ g, profile, onProfile }: { g: ReturnType<typeof useGame>; pr
   );
 }
 
+function InfoLine({ k, v }: { k: string; v: string }) {
+  const t = useT();
+  return (
+    <Row style={{ gap: 8 }}>
+      <Caps size={9} glow={false} style={{ color: t.muted, width: 44 }}>{k}</Caps>
+      <T glow numberOfLines={1} style={{ flex: 1, fontFamily: F.semi, fontSize: 15, color: t.bright }}>{v}</T>
+    </Row>
+  );
+}
+
+// A labelled HP/MP-style bar with its numbers
+function Bar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+  const t = useT();
+  return (
+    <Row style={{ gap: 10 }}>
+      <Caps size={10} color={t.bright} style={{ width: 40 }}>{label}</Caps>
+      <View style={{ flex: 1, gap: 3 }}>
+        <View style={{ height: 6, borderWidth: 1, borderColor: t.edge, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{ width: `${Math.min(1, value / max) * 100}%`, height: '100%', backgroundColor: color, boxShadow: `0 0 8px ${color}` }} />
+        </View>
+        <Text style={{ color: t.muted, fontFamily: F.medium, fontSize: 10, alignSelf: 'flex-end', fontVariant: ['tabular-nums'] }}>{value + ' / ' + max}</Text>
+      </View>
+    </Row>
+  );
+}
+
+function StatIcon({ k, color }: { k: string; color: string }) {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      {k === 'str' ? <Path d="M2.5 12h19M5 8.5v7M8 7v10M16 7v10M19 8.5v7" />
+        : k === 'vit' ? <Path d="M12 20s-7.5-4.6-7.5-10A4.3 4.3 0 0 1 12 7.3 4.3 4.3 0 0 1 19.5 10c0 5.4-7.5 10-7.5 10z" />
+        : k === 'agi' ? <Path d="M13 3L5 13.5h6L10 21l8-10.5h-6z" />
+        : <Path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6-5.3-3-5.3 3 1.2-6L3.4 9.3l6-.7z" />}
+    </Svg>
+  );
+}
+
 // ---------- recent quests, at the bottom of Status
 function History({ history }: { history: Rec[] }) {
   const t = useT();
@@ -554,7 +615,7 @@ function NoticeOverlay({ n, onClose }: { n: { title: string; lines: string[]; to
   return (
     <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 3, 10, 0.78)', justifyContent: 'center', padding: 20 }}>
       <Appear key={n.title + n.lines.join()}>
-        <Win title={n.title} tone={n.tone}>
+        <Win hero title={n.title} tone={n.tone}>
           <View style={{ gap: 8, paddingVertical: 10 }}>
             {n.lines.map((l, i) => (
               <T key={i} glow style={{ textAlign: 'center', fontSize: i === 0 ? 16 : 15, fontFamily: l.startsWith('LEVEL UP') ? F.bold : F.medium, color: l.startsWith('LEVEL UP') ? t.gold : l.startsWith('Rewards') ? t.bright : t.fg }}>{l}</T>

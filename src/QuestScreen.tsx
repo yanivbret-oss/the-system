@@ -41,7 +41,7 @@ function WorkoutTop({ g }: { g: Game }) {
   const t = useT(), s = g.s!, W = g.W!;
   return (
     <Appear>
-      <Win title="QUEST INFO">
+      <Win hero title="QUEST INFO">
         <View style={{ alignItems: 'center', gap: 6 }}>
           <Caps size={20} color={t.bright}>{W.name}</Caps>
           <T muted style={{ fontSize: 13 }}>{W.items.length + ' exercises · reward ' + (XP[s.key] || 0) + ' XP'}</T>
@@ -73,7 +73,7 @@ function SessionBar({ g }: { g: Game }) {
 function Check({ on, color }: { on: boolean; color: string }) {
   const t = useT();
   return (
-    <View style={{ width: 22, height: 22, borderWidth: 1, borderColor: on ? color : t.dim, alignItems: 'center', justifyContent: 'center', boxShadow: on ? `0 0 8px ${t.glow}` : undefined, marginTop: 1 }}>
+    <View style={{ width: 22, height: 22, borderWidth: 1, borderColor: on ? color : t.muted, alignItems: 'center', justifyContent: 'center', boxShadow: on ? `0 0 8px ${t.glow}` : undefined, marginTop: 1 }}>
       {on ? <Text style={{ color, fontFamily: F.bold, fontSize: 14, lineHeight: 16 }}>✓</Text> : null}
     </View>
   );
@@ -175,51 +175,63 @@ function CounterQuest({ g }: { g: Game }) {
   const goals = pen ? QUESTS.P.goals(g.gear) : QUESTS.Q.goals(s.week);
   const count = (id: string, timer?: boolean) => { const c = s.counts?.[id] || 0; return timer && s.plankSince ? c + Math.floor((Date.now() - s.plankSince) / 1000) : c; };
   const all = goals.every(x => count(x.id, x.timer) >= x.target);
+  const [how, setHow] = useState<string | null>(null);
   return (
     <Appear>
-      <Win title="QUEST INFO" tone={pen ? 'penalty' : 'normal'}>
-        <View style={{ alignItems: 'center', gap: 4 }}>
-          <Caps size={12} glow={false} style={{ color: pen ? t.warn : t.muted }}>{pen ? 'Penalty Zone' : 'Daily Quest'}</Caps>
-          <T glow style={{ fontFamily: F.semi, fontSize: 18, textAlign: 'center', color: t.bright }}>{Qd.title}</T>
+      <Win hero title="QUEST INFO" tone={pen ? 'penalty' : 'normal'}>
+        <T glow style={{ textAlign: 'center', fontSize: 15, color: t.fg }}>{'[' + (pen ? 'Penalty Quest: Survival' : 'Daily Quest: ' + Qd.title) + ' has arrived.]'}</T>
+        <View style={{ alignItems: 'center', gap: 3, marginTop: 6 }}>
+          <Caps size={17} color={t.bright} style={{ letterSpacing: 3 }}>Goal</Caps>
+          <View style={{ width: 58, height: 1.5, backgroundColor: t.bright, boxShadow: `0 0 6px ${t.glow}` }} />
+          <View style={{ width: 58, height: 1, backgroundColor: t.bright, opacity: 0.6, marginTop: 1 }} />
         </View>
-        <Caps size={12} style={{ textAlign: 'center' }}>Goals</Caps>
-        <T muted style={{ fontSize: 13, textAlign: 'center', marginTop: -6 }}>Tap each goal when you finish it.</T>
-        {goals.map(x => {
-          const n = Math.min(count(x.id, x.timer), x.target), met = n >= x.target;
-          const toggle = () => { if (!s.saved && !(x.timer && s.plankSince)) g.actions.count(x.id, met ? -x.target : x.target, x.target); };
-          return (
-            <View key={x.id} style={{ gap: 8 }}>
-              <Pressable onPress={toggle} accessibilityRole="checkbox" accessibilityState={{ checked: met }} accessibilityLabel={x.label}
-                style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: 12, borderWidth: 1,
-                  borderColor: met ? 'rgba(89,232,255,0.45)' : t.line, backgroundColor: pressed ? 'rgba(150,215,255,0.12)' : met ? 'rgba(89,232,255,0.07)' : 'rgba(0,0,0,0.25)' })}>
-                <Row style={{ flex: 1 }}><Check on={met} color={t.good} /><T style={{ fontFamily: F.semi, fontSize: 16, color: met ? t.good : t.fg }}>{x.label}</T></Row>
-                <Num size={20} color={met ? t.good : t.bright}>{x.timer && s.plankSince ? n + 's' : x.target + (x.unit || '')}</Num>
-              </Pressable>
-              {x.timer && !met ? (
-                <Row style={{ paddingLeft: 30 }}>
-                  <Btn small primary label={s.plankSince ? 'Stop timer' : n ? 'Resume timer' : 'Start timer'} disabled={!!s.saved} onPress={() => g.actions.plank(x.id, x.target)} />
-                  <T muted style={{ fontSize: 12 }}>or tap when done</T>
-                </Row>
-              ) : null}
-              <View style={{ paddingLeft: 30 }}><HowTo keys={HOW[x.how]} /></View>
-            </View>
-          );
-        })}
-        <Divider />
-        <T style={{ color: t.warn, fontSize: 13, textAlign: 'center', lineHeight: 20 }}>{(pen ? '' : 'WARNING: ') + Qd.warn}</T>
+        <View style={{ gap: 4, paddingHorizontal: 6 }}>
+          {goals.map(x => {
+            const n = Math.min(count(x.id, x.timer), x.target), met = n >= x.target;
+            const toggle = () => { if (!s.saved && !(x.timer && s.plankSince)) g.actions.count(x.id, met ? -x.target : x.target, x.target); };
+            return (
+              <View key={x.id} style={{ gap: 6 }}>
+                <Pressable onPress={toggle} accessibilityRole="checkbox" accessibilityState={{ checked: met }} accessibilityLabel={x.label}
+                  style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, backgroundColor: pressed ? 'rgba(150,215,255,0.08)' : 'transparent' })}>
+                  <Row style={{ flex: 1, gap: 10 }}>
+                    <T glow style={{ fontSize: 18, color: met ? t.good : t.fg }}>{x.label}</T>
+                    <Pressable onPress={() => setHow(how === x.id ? null : x.id)} hitSlop={10} accessibilityLabel={'How to do ' + x.label}
+                      style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 1, borderColor: how === x.id ? t.bright : t.muted, alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ color: how === x.id ? t.bright : t.muted, fontFamily: F.bold, fontSize: 11, lineHeight: 13 }}>?</Text>
+                    </Pressable>
+                  </Row>
+                  <Num size={18} color={met ? t.good : t.fg}>{'[' + n + '/' + x.target + (x.unit || '') + ']'}</Num>
+                  <Check on={met} color={t.good} />
+                </Pressable>
+                {x.timer && !met ? (
+                  <Row>
+                    <Btn small primary label={s.plankSince ? 'Stop timer' : n ? 'Resume timer' : 'Start timer'} disabled={!!s.saved} onPress={() => g.actions.plank(x.id, x.target)} />
+                    <T muted style={{ fontSize: 12 }}>or tap the goal when done</T>
+                  </Row>
+                ) : null}
+                {how === x.id ? <HowTo keys={HOW[x.how]} open /> : null}
+              </View>
+            );
+          })}
+        </View>
+        <T glow style={{ fontSize: 15, textAlign: 'center', lineHeight: 26, marginTop: 6, paddingHorizontal: 10 }}>
+          {pen ? <>No XP is awarded for a <Text style={{ color: t.warn }}>penalty</Text> quest.</>
+            : <><Text style={{ color: t.warn }}>WARNING</Text>: Failure to complete the daily quest by midnight will result in an appropriate <Text style={{ color: t.warn }}>penalty</Text>.</>}
+        </T>
         <Btn primary big label={s.saved ? 'Quest reported ✓' : 'Complete quest'} disabled={!all || !!s.saved} onPress={g.actions.saveQuest} />
       </Win>
     </Appear>
   );
 }
 
-function HowTo({ keys }: { keys?: string[] }) {
+function HowTo({ keys, open: forced }: { keys?: string[]; open?: boolean }) {
   const t = useT();
-  const [open, setOpen] = useState(false);
+  const [opened, setOpen] = useState(false);
+  const open = forced || opened;
   if (!keys) return null;
   return (
     <View style={{ gap: 8 }}>
-      <Pressable onPress={() => setOpen(!open)} hitSlop={8}><Caps size={10} color={t.accent} glow={false}>{(open ? '▾ ' : '▸ ') + 'How to'}</Caps></Pressable>
+      {forced ? null : <Pressable onPress={() => setOpen(!open)} hitSlop={8}><Caps size={10} color={t.accent} glow={false}>{(open ? '▾ ' : '▸ ') + 'How to'}</Caps></Pressable>}
       {open ? keys.map(k => (
         <View key={k} style={{ gap: 4, paddingTop: 8, borderTopWidth: 1, borderColor: t.line }}>
           <T style={{ fontFamily: F.semi, fontSize: 14 }}>{MOVES[k][0]}</T>

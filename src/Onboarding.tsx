@@ -85,7 +85,7 @@ export function Onboarding({ onDone }: { onDone: (name: string, days: number[], 
   if (step === 'name') {
     return (
       <Appear key="name">
-        <Win title="PLAYER AWAKENING">
+        <Win hero title="PLAYER AWAKENING">
           <T glow style={{ textAlign: 'center', fontSize: 16 }}>What should the System call you?</T>
           <TextInput
             value={name} onChangeText={setName} placeholder="Player name" placeholderTextColor={t.muted} maxLength={20} autoFocus
@@ -100,7 +100,7 @@ export function Onboarding({ onDone }: { onDone: (name: string, days: number[], 
 
   return (
     <Appear key="offer">
-      <Win title="NOTIFICATION">
+      <Win hero title="NOTIFICATION">
         <View style={{ gap: 4, paddingVertical: 18, paddingHorizontal: 6 }}>
           <T glow style={{ fontSize: 17, lineHeight: 30 }}>
             You have been chosen to become a <T glow style={{ fontFamily: F.bold, fontStyle: 'italic', fontSize: 17, color: t.bright }}>Player</T>.

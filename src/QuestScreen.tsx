@@ -17,7 +17,9 @@ export function QuestScreen({ g, onBack }: { g: Game; onBack: () => void }) {
   const scroll = useRef<ScrollViewInstance>(null);
   const refs = useRef<Record<string, ViewInstance | null>>({});
   const list = useRef<ViewInstance>(null);
-  const listY = useRef(0), barH = useRef(80);
+  const listY = useRef(0), barH = useRef(80), barY = useRef(0);
+  // the timer bar is see-through until content scrolls under it
+  const [stuck, setStuck] = useState(false);
   // keep the exercise in progress on screen, just under the sticky timer bar
   // (a set tap never scrolls: only a newly active exercise or the report does).
   // Positions are measured when scrolling, since cards above may have collapsed since the last layout.
@@ -40,9 +42,9 @@ export function QuestScreen({ g, onBack }: { g: Game; onBack: () => void }) {
           <Caps size={12}>‹ Back</Caps>
         </Pressable>
       </Row>
-      <ScrollView ref={scroll} contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 14 }} stickyHeaderIndices={isCounter ? undefined : [1]}>
+      <ScrollView ref={scroll} scrollEventThrottle={32} onScroll={e => { const on = e.nativeEvent.contentOffset.y > barY.current + 1; if (on !== stuck) setStuck(on); }} contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 14 }} stickyHeaderIndices={isCounter ? undefined : [1]}>
         {isCounter ? <CounterQuest g={g} /> : <WorkoutTop g={g} />}
-        {isCounter ? <View /> : <View onLayout={e => { barH.current = e.nativeEvent.layout.height; }}><SessionBar g={g} /></View>}
+        {isCounter ? <View /> : <View onLayout={e => { barH.current = e.nativeEvent.layout.height; barY.current = e.nativeEvent.layout.y; }}><SessionBar g={g} stuck={stuck} /></View>}
         {isCounter ? <View /> : <View ref={list} onLayout={e => { listY.current = e.nativeEvent.layout.y; }}><WorkoutItems g={g} refs={refs.current} /></View>}
       </ScrollView>
     </View>
@@ -63,11 +65,11 @@ function WorkoutTop({ g }: { g: Game }) {
   );
 }
 
-function SessionBar({ g }: { g: Game }) {
+function SessionBar({ g, stuck }: { g: Game; stuck: boolean }) {
   const t = useT(), s = g.s!, W = g.W!;
   const done = W.items.filter(i => s.items[i.id]?.done).length;
   return (
-    <View style={{ backgroundColor: t.bg, paddingVertical: 10, borderBottomWidth: 1, borderColor: t.line, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+    <View style={{ backgroundColor: stuck ? 'rgba(1, 4, 9, 0.94)' : 'transparent', paddingVertical: 10, marginHorizontal: -16, paddingHorizontal: 16, borderBottomWidth: 1, borderColor: stuck ? t.line : 'transparent', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
       <View>
         <Num size={30}>{s.startedAt ? fmt(((s.endedAt || Date.now()) - s.startedAt) / 1000) : '00:00'}</Num>
         <Row style={{ gap: 3, marginTop: 4 }}>

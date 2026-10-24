@@ -25,6 +25,8 @@ export const store = {
   history: async () => (await get<Rec[]>('history')) || [],
   addRec: async (r: Rec) => { const h = await store.history(); const n = [r, ...h]; await set('history', n); return n; },
   achSeen: () => get<string[]>('ach-seen'), saveAchSeen: (a: string[]) => set('ach-seen', a),
+  // achievements the player has looked at in the Status tab (the rest are marked NEW)
+  achViewed: () => get<string[]>('ach-viewed'), saveAchViewed: (a: string[]) => set('ach-viewed', a),
 };
 
 // ---- dates and plan position

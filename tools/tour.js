@@ -12,6 +12,7 @@ const profile = { name: 'Yaniv', startDate: '2026-10-25', rank: 'E' };
 // one realistic week: Sun Q, Mon A, Tue Q, Wed B, Thu Q, Fri C, Sat D
 const week1 = [rec('Q', at(2026,10,25,19)), rec('A', at(2026,10,26,9,50), { score: '06:12' }), rec('Q', at(2026,10,27,20)), rec('B', at(2026,10,28,9,45), { score: '4 rounds' }), rec('Q', at(2026,10,29,18))];
 const many = (() => { const h = []; for (let w = 0; w < 3; w++) { const o = w * 7; h.push(rec('Q', at(2026,10,4+o,19)), rec('A', at(2026,10,5+o,9)), rec('Q', at(2026,10,6+o,20)), rec('B', at(2026,10,7+o,9)), rec('Q', at(2026,10,8+o,7,10)), rec('C', at(2026,10,9+o,9), { score: '5 rounds' }), rec('W', at(2026,10,9+o,7), { kg: 92 - w * 0.7 }), rec('D', at(2026,10,10+o,11), { score: '24:10', feel: w === 2 ? 5 : 3 })); } return h.reverse(); })();
+const ALL_ACH = ['Awakening','Gate Opener','Gate Hunter','Streak 7','Streak 30','Early Bird','Night Owl','Penalty Survivor','Shadow','Machine','Minus 2','Minus 5','Level 5','Level 10'];
 const sess = (key, day, extra = {}) => ({ v: 3, key, week: 1, day: new Date(day).toDateString(), startedAt: null, endedAt: null, items: {}, active: null, feel: 0, ...extra });
 
 const scenarios = [
@@ -48,6 +49,8 @@ const scenarios = [
   { name: '25-workout-no-equipment', time: at(2026,10,28, 9), seed: { profile: { ...profile, gear: 'none' }, history: [rec('Q', at(2026,10,27,19)), rec('A', at(2026,10,26,9)), rec('Q', at(2026,10,25,19))] }, act: async p => { await p.getByLabel('Accept quest').click(); }, scroll: true },
   { name: '27-daily-quest-demos', height: 1500, time: at(2026,10,27, 19), seed: { profile, history: [rec('A', at(2026,10,26,9)), rec('Q', at(2026,10,25,19))], session: sess('Q', at(2026,10,27), { counts: { push: 20 } }) }, act: async p => { await p.getByLabel('Accept quest').click(); await p.waitForTimeout(2500); } },
   { name: '28-workout-demos', height: 1300, time: at(2026,10,28, 9, 20), seed: { profile, session: sess('B', at(2026,10,28), { startedAt: at(2026,10,28,9,0), active: 'b4', items: { warm: { sec: 480, done: true }, b1: { sec: 300, done: true }, b2: { sec: 300, done: true }, b3: { sec: 300, done: true }, b4: { sec: 0, runningSince: at(2026,10,28,9,19), sets: [true] } } }) }, act: async p => { await p.waitForTimeout(2500); } },
+  { name: '29a-home-new-achievement', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04' }, history: [...week1.slice().reverse(), ...many], 'ach-seen': ALL_ACH, 'ach-viewed': ['Awakening','Gate Opener'] } },
+  { name: '29b-status-new-achievement', height: 2700, time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04' }, history: [...week1.slice().reverse(), ...many], 'ach-seen': ALL_ACH, 'ach-viewed': ['Awakening','Gate Opener'] }, act: async p => { await p.getByRole('tab', { name: 'Status' }).click(); } },
   { name: '26-home-premium', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04', premium: true, trialSeen: true, rank: 'B' }, history: [...week1.slice().reverse(), ...many] } },
 ];
 
@@ -62,7 +65,7 @@ const scenarios = [
     // demo loops: serve local copies (DEMO_DIR holds <move>.webm, which headless Chromium can play)
     if (process.env.DEMO_DIR) await p.route('**/*.mp4', r => { const k = Object.entries(DEMO_SRC).find(([, u]) => u === r.request().url()); return k ? r.fulfill({ path: `${process.env.DEMO_DIR}/${k[0]}.webm`, contentType: 'video/webm' }) : r.continue(); });
     await p.clock.install({ time: new Date(sc.time) }); await p.clock.resume();
-    await p.addInitScript(seed => { localStorage.clear(); for (const [k, v] of Object.entries(seed || {})) localStorage.setItem(k, JSON.stringify(v)); }, sc.seed || {});
+    await p.addInitScript(seed => { localStorage.clear(); for (const [k, v] of Object.entries(seed || {})) localStorage.setItem(k, JSON.stringify(v)); }, { 'ach-viewed': ALL_ACH, ...(sc.seed || {}) });
     await p.goto(base); await p.waitForTimeout(1500);
     // dismiss queued achievement popups unless the scenario is about them
     if (!sc.keepPopups) for (let i = 0; i < 6; i++) { const ok = p.getByLabel('OK'); if (await ok.count()) { await ok.first().click(); await p.waitForTimeout(250); } }

@@ -27,7 +27,8 @@
     "plugins": [
       "expo-font",
       "expo-audio",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-video"
     ],
     "backgroundColor": "#03060D",
     "splash": {

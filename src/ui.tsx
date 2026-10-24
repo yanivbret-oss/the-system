@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, useId, ReactNode } from 'react';
-import { View, Text, Pressable, Animated, TextProps, ViewStyle, TextStyle, StyleProp } from 'react-native';
+import { View, Text, Pressable, Animated, TextProps, ViewStyle, TextStyle, StyleProp, Platform } from 'react-native';
 import Svg, { Line, Circle, Defs, LinearGradient, RadialGradient, Stop, Rect, Polygon, Polyline } from 'react-native-svg';
 import { BLUE, F, Theme } from './theme';
 
@@ -130,6 +130,7 @@ export function Header({ title, icon = '!', tone = 'normal' }: { title: string; 
 }
 
 // Outlined rectangle button, label in spaced capitals. "primary" glows; "danger" is red.
+// Not focusable on Android, where a focused button makes its ScrollView jump.
 export function Btn({ label, onPress, primary, danger, gold, on, disabled, big, style, small }: {
   label: string; onPress?: () => void; primary?: boolean; danger?: boolean; gold?: boolean; on?: boolean; disabled?: boolean; big?: boolean; small?: boolean; style?: StyleProp<ViewStyle>;
 }) {
@@ -138,7 +139,7 @@ export function Btn({ label, onPress, primary, danger, gold, on, disabled, big, 
   const glow = danger ? t.warnGlow : gold ? 'rgba(255, 200, 80, 0.35)' : primary || on ? t.glow : 'transparent';
   return (
     <Pressable
-      onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled, selected: on }}
+      onPress={onPress} disabled={disabled} focusable={Platform.OS === 'web'} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled, selected: on }}
       style={({ pressed }) => [{ borderWidth: 1, borderColor: c, paddingVertical: big ? 15 : small ? 6 : 10, paddingHorizontal: small ? 10 : 16, alignItems: 'center', justifyContent: 'center',
         backgroundColor: pressed ? 'rgba(150, 215, 255, 0.18)' : on ? 'rgba(89, 232, 255, 0.1)' : primary ? 'rgba(10, 30, 60, 0.55)' : 'rgba(0, 0, 0, 0.55)',
         boxShadow: `0 0 12px ${glow}, inset 0 0 10px ${glow}`, opacity: disabled ? 0.35 : 1, minHeight: small ? 36 : 44 }, style]}

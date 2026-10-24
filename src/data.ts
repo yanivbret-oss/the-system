@@ -148,6 +148,11 @@ export const MOVES: Record<string, [string, string, string]> = {
   dbpress: ['Seated dumbbell shoulder press', 'Sit with back support, dumbbells at shoulder height. Press overhead to straight arms, lower under control.', 'seated dumbbell shoulder press form'],
   plank: ['Plank', 'On forearms and toes, body straight from head to heels. Brace your abs and glutes; do not let your hips sag or pike up.', 'plank proper form'],
 };
+// Looping anime demo videos of each move, keyed like MOVES
+export const DEMOS: Record<string, string> = {
+  pushup: 'https://d8j0ntlcm91z4.cloudfront.net/user_3I0Y4x5W8ur9VRD7pF8Z6SDNlRM/hf_20261024_184744_6544047a-77c9-4bbe-be2c-b68485e0053a.mp4',
+  deepsquat: 'https://d8j0ntlcm91z4.cloudfront.net/user_3I0Y4x5W8ur9VRD7pF8Z6SDNlRM/hf_20261024_184744_3ef33930-bb3c-4094-b7d3-f625b123bb7f.mp4',
+};
 export const HOW: Record<string, string[]> = {
   warm: ['goblet', 'bandpull', 'inchworm'], a1: ['goblet'], a2: ['bulgarian', 'revlunge'], a3: ['slrdl'], a4: ['swing'], a5: ['goblet', 'burpee'],
   b1: ['pullup'], b2: ['negative'], b3: ['trxrow'], b4: ['pushup'], b5: ['press'], b6: ['pullup', 'pushup', 'swing'],

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, ScrollViewInstance } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, ScrollViewInstance, ViewInstance } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Header, useT } from './ui';
 import { F } from './theme';
-import { WORKOUTS, QUESTS, XP, MOVES, HOW, Item, WorkoutKey } from './data';
+import { WORKOUTS, QUESTS, XP, MOVES, HOW, DEMOS, Item, WorkoutKey } from './data';
 import { fmt, rxFor, cdFor, setsFor, itemSec, Session } from './logic';
 import { useGame } from './game';
+import { Demo } from './Demo';
 
 type Game = ReturnType<typeof useGame>;
 
@@ -14,12 +15,23 @@ export function QuestScreen({ g, onBack }: { g: Game; onBack: () => void }) {
   const s = g.s!;
   const isCounter = s.key === 'Q' || s.key === 'P';
   const scroll = useRef<ScrollViewInstance>(null);
-  const ys = useRef<Record<string, number>>({});
-  const listY = useRef(0);
-  // keep the exercise in progress on screen, under the sticky timer bar
+  const refs = useRef<Record<string, ViewInstance | null>>({});
+  const list = useRef<ViewInstance>(null);
+  const listY = useRef(0), barH = useRef(80);
+  // keep the exercise in progress on screen, just under the sticky timer bar
+  // (a set tap never scrolls: only a newly active exercise or the report does).
+  // Positions are measured when scrolling, since cards above may have collapsed since the last layout.
+  const lastActive = useRef(s.active);
   useEffect(() => {
-    const target = s.active ? ys.current[s.active] : s.endedAt && !s.saved ? ys.current.report : undefined;
-    if (target !== undefined) setTimeout(() => scroll.current?.scrollTo({ y: Math.max(0, listY.current + target - 96), animated: true }), 400);
+    const moved = s.active && s.active !== lastActive.current;
+    lastActive.current = s.active;
+    const key = moved ? s.active! : s.endedAt && !s.saved ? 'report' : undefined;
+    if (!key) return;
+    const id = setTimeout(() => {
+      const el = refs.current[key];
+      if (el && list.current) el.measureLayout(list.current, (_x, y) => scroll.current?.scrollTo({ y: Math.max(0, listY.current + y - barH.current - 10), animated: true }));
+    }, 350);
+    return () => clearTimeout(id);
   }, [s.active, s.endedAt]);
   return (
     <View style={{ flex: 1 }}>
@@ -30,8 +42,8 @@ export function QuestScreen({ g, onBack }: { g: Game; onBack: () => void }) {
       </Row>
       <ScrollView ref={scroll} contentContainerStyle={{ padding: 16, paddingBottom: 48, gap: 14 }} stickyHeaderIndices={isCounter ? undefined : [1]}>
         {isCounter ? <CounterQuest g={g} /> : <WorkoutTop g={g} />}
-        {isCounter ? <View /> : <SessionBar g={g} />}
-        {isCounter ? <View /> : <View onLayout={e => { listY.current = e.nativeEvent.layout.y; }}><WorkoutItems g={g} ys={ys.current} /></View>}
+        {isCounter ? <View /> : <View onLayout={e => { barH.current = e.nativeEvent.layout.height; }}><SessionBar g={g} /></View>}
+        {isCounter ? <View /> : <View ref={list} onLayout={e => { listY.current = e.nativeEvent.layout.y; }}><WorkoutItems g={g} refs={refs.current} /></View>}
       </ScrollView>
     </View>
   );
@@ -79,15 +91,15 @@ function Check({ on, color }: { on: boolean; color: string }) {
   );
 }
 
-function WorkoutItems({ g, ys }: { g: Game; ys: Record<string, number> }) {
+function WorkoutItems({ g, refs }: { g: Game; refs: Record<string, ViewInstance | null> }) {
   const t = useT(), s = g.s!, W = g.W!;
   const [hard, setHard] = useState('');
   return (
     <View style={{ gap: 12 }}>
-      {W.items.map(it => <View key={it.id} onLayout={e => { ys[it.id] = e.nativeEvent.layout.y; }}><ItemCard g={g} it={it} s={s} /></View>)}
+      {W.items.map(it => <View key={it.id} ref={el => { refs[it.id] = el; }}><ItemCard g={g} it={it} s={s} /></View>)}
       {s.endedAt && !s.saved ? (
         <Appear style={{}}>
-          <View onLayout={e => { ys.report = e.nativeEvent.layout.y; }} />
+          <View ref={el => { refs.report = el; }} />
           <Win title="QUEST REPORT">
             <Row style={{ justifyContent: 'space-between' }}>
               <View><Caps size={10} glow={false} style={{ color: t.muted }}>Time</Caps><Num size={24}>{fmt((s.endedAt - s.startedAt!) / 1000)}</Num></View>
@@ -123,6 +135,7 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
       </View>
     );
   }
+  const nextSet = nSets ? Array.from({ length: nSets }, (_, i) => i).find(i => !st.sets?.[i]) ?? -1 : -1;
   const emomMin = it.emom && cd ? Math.min(Math.floor(sec / 60) + 1, cd / 60) : 0;
   return (
     <View style={{ borderWidth: 1, borderColor: active ? t.edge : t.line, padding: 14, gap: 10, backgroundColor: active ? 'rgba(40, 110, 200, 0.12)' : 'rgba(4, 10, 24, 0.7)',
@@ -157,13 +170,16 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
           ) : null}
           {live ? (active ? (
             <>
-              <Btn primary small label="Done" onPress={() => g.actions.finishItem(it.id)} />
+              {nSets && nextSet >= 0
+                ? <Btn primary small label={'Set ' + (nextSet + 1) + ' of ' + nSets + ' done'} onPress={() => g.actions.toggleSet(it, nextSet, nSets)} />
+                : <Btn primary small label="Done" onPress={() => g.actions.finishItem(it.id)} />}
               {it.finisher && it.countdown && !it.emom ? <Btn small label={'Round done (' + (st.rounds || 0) + ')'} onPress={() => g.actions.round(it.id)} /> : null}
             </>
           ) : !st.done ? <Btn small label={st.sec ? 'Resume' : 'Start'} onPress={() => g.actions.startItem(it.id)} />
             : <Btn small label="Undo" onPress={() => g.actions.undoItem(it.id)} />) : null}
         </Row>
       ) : null}
+      {active ? <Demo k={(it.how || HOW[it.id] || []).find(k => DEMOS[k])} /> : null}
       <View style={{ paddingLeft: 34 }}><HowTo keys={it.how || HOW[it.id]} /></View>
     </View>
   );
@@ -235,6 +251,7 @@ function HowTo({ keys, open: forced }: { keys?: string[]; open?: boolean }) {
       {open ? keys.map(k => (
         <View key={k} style={{ gap: 4, paddingTop: 8, borderTopWidth: 1, borderColor: t.line }}>
           <T style={{ fontFamily: F.semi, fontSize: 14 }}>{MOVES[k][0]}</T>
+          {DEMOS[k] ? <Demo k={k} /> : null}
           <T muted style={{ fontSize: 13, lineHeight: 20 }}>{MOVES[k][1]}</T>
           <Pressable onPress={() => WebBrowser.openBrowserAsync('https://www.youtube.com/results?search_query=' + encodeURIComponent(MOVES[k][2]), { toolbarColor: '#050b18', controlsColor: '#9fd8ff', presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET }).catch(() => {})}>
             <Caps size={10} color={t.accent} glow={false}>▶ Watch a demo</Caps>

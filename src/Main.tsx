@@ -245,18 +245,20 @@ function QuestTab({ g, profile, history, open, onStatus }: { g: ReturnType<typeo
   );
 }
 
-// A small player card at the top of the home screen; the full window lives in the Status tab
+// The player's window at the top of the home screen, kept short; the full window lives in the Status tab
 function HomeStatus({ profile, history, onPress }: { profile: Profile; history: Rec[]; onPress: () => void }) {
   const t = useT(), p = player(history);
   return (
     <Appear>
-      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Open status"
-        style={({ pressed }) => ({ borderWidth: 1, borderColor: t.line, paddingVertical: 12, paddingHorizontal: 14, gap: 8, backgroundColor: pressed ? 'rgba(40, 110, 200, 0.16)' : 'rgba(4, 10, 24, 0.7)' })}>
-        <Row style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <Text style={{ color: t.fg, fontFamily: F.semi, fontSize: 16 }}>{profile.name}</Text>
-          <Caps size={13} color={t.bright}>{'Level ' + p.level}</Caps>
-        </Row>
-        <Meter value={p.into / p.need} height={6} />
+      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Open status">
+        <Win title="STATUS" icon="i" pad={16}>
+          <View>
+            <Caps size={10} glow={false} style={{ color: t.muted }}>{'Player: ' + profile.name}</Caps>
+            <Text style={{ color: t.bright, fontFamily: F.bold, fontSize: 28, lineHeight: 34 }}>{'Level ' + p.level}</Text>
+          </View>
+          <Meter value={p.into / p.need} height={7} />
+          <Text style={{ color: t.muted, fontFamily: F.medium, fontSize: 12, marginTop: -6 }}>{(p.need - p.into) + ' XP to level ' + (p.level + 1)}</Text>
+        </Win>
       </Pressable>
     </Appear>
   );

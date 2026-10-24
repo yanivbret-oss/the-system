@@ -33,8 +33,10 @@ export const store = {
 export const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 export const ymd = (d: Date) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 export const parseYmd = (s: string) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+// whole calendar days between two dates; rounded so a 23- or 25-hour daylight-saving day still counts as one
+export const daysBetween = (a: Date, b: Date) => Math.round((startOfDay(b).getTime() - startOfDay(a).getTime()) / 864e5);
 export function weeksIn(p: Profile, today: Date) {
-  return Math.floor((startOfDay(today).getTime() - parseYmd(p.startDate).getTime()) / 864e5 / 7) + 1;
+  return Math.floor(daysBetween(parseYmd(p.startDate), today) / 7) + 1;
 }
 // The 4-week block repeats until adaptive plans arrive
 export const planWeek = (n: number) => ((Math.max(1, n) - 1) % 4) + 1;
@@ -50,7 +52,7 @@ export const todaysWorkout = (today: Date, p: Profile) => {
 
 // ---- premium: everyone gets the full System for the first 7 days, then the free tier
 export const TRIAL_DAYS = 7;
-export const trialLeft = (p: Profile, today: Date) => Math.max(0, TRIAL_DAYS - Math.floor((startOfDay(today).getTime() - parseYmd(p.startDate).getTime()) / 864e5));
+export const trialLeft = (p: Profile, today: Date) => Math.max(0, TRIAL_DAYS - daysBetween(parseYmd(p.startDate), today));
 export const isPremium = (p: Profile, today: Date) => !!p.premium || trialLeft(p, today) > 0;
 export const FREE_RANK_CAP = 'C';
 export const RANKS = ['E', 'D', 'C', 'B', 'A', 'S'];

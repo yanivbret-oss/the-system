@@ -38,7 +38,7 @@ export function QuestScreen({ g, onBack }: { g: Game; onBack: () => void }) {
   return (
     <View style={{ flex: 1 }}>
       <Row style={{ paddingHorizontal: 16, paddingTop: 10, justifyContent: 'space-between' }}>
-        <Pressable onPress={onBack} disabled={g.running} hitSlop={12} style={{ opacity: g.running ? 0.3 : 1 }}>
+        <Pressable onPress={onBack} disabled={g.running} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back" style={{ opacity: g.running ? 0.3 : 1 }}>
           <Caps size={12}>‹ Back</Caps>
         </Pressable>
       </Row>
@@ -57,7 +57,7 @@ function WorkoutTop({ g }: { g: Game }) {
     <Appear>
       <Win hero title="QUEST INFO">
         <View style={{ alignItems: 'center', gap: 6 }}>
-          <Caps size={20} color={t.bright}>{W.name}</Caps>
+          <Caps size={20} color={t.bright} style={{ textAlign: 'center' }}>{W.name.replace(/-/g, '\u2011')}</Caps>
           <T muted style={{ fontSize: 13 }}>{W.items.length + ' exercises · reward ' + (XP[s.key] || 0) + ' XP'}</T>
         </View>
       </Win>

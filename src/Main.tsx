@@ -160,7 +160,7 @@ function QuestTab({ g, profile, history, open, onStatus, onWeigh }: { g: ReturnT
             <Win hero title="PENALTY" tone="penalty">
               <T style={{ textAlign: 'center' }}>{"Yesterday's daily quest was not completed."}</T>
               <T style={{ textAlign: 'center', color: t.warn, fontFamily: F.semi }}>You have been moved to the Penalty Zone.</T>
-              <T muted style={{ textAlign: 'center', fontSize: 13 }}>100 kettlebell swings and 30 burpees. Clear it to unlock today's quests.</T>
+              <T muted style={{ textAlign: 'center', fontSize: 13 }}>{QUESTS.P.goals(g.gear).map(x => x.target + ' ' + x.label.toLowerCase()).join(' and ') + ". Clear it to unlock today's quests."}</T>
               <Btn danger big label="Enter penalty zone" onPress={() => open('P')} />
             </Win>
           </Appear>

@@ -3,7 +3,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { WORKOUTS, QUESTS, XP, WorkoutKey, Item, workoutFor } from './data';
 import { beep } from './sound';
 import {
-  Profile, Rec, Session, store, rxFor, cdFor, itemSec, player, fmt, weeksIn, planWeek, todaysWorkout, ACH, missedWeighIns,
+  Profile, Rec, Session, store, rxFor, cdFor, itemSec, player, fmt, ymd, weeksIn, planWeek, todaysWorkout, ACH, missedWeighIns,
 } from './logic';
 
 export type Notice = { title: string; lines: string[]; tone?: 'normal' | 'penalty' | 'secret' | 'gold' };
@@ -63,7 +63,7 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
     if (!missed.length) return;
     (async () => {
       let h = history;
-      for (const d of missed) h = await store.addRec({ key: 'X', workout: 'Weigh-in missed', week, date: d.toISOString().slice(0, 10), createdAt: d.getTime(), totalSec: 0, exercises: [], score: '', feel: null, hard: '' });
+      for (const d of missed) h = await store.addRec({ key: 'X', workout: 'Weigh-in missed', week, date: ymd(d), createdAt: d.getTime(), totalSec: 0, exercises: [], score: '', feel: null, hard: '' });
       setHistory(h);
       notify({ title: 'PENALTY', tone: 'penalty', lines: [missed.length > 1 ? 'You did not report your weight for ' + missed.length + ' weeks.' : 'You did not report your weight last week.', 'Penalty: ' + XP.X * missed.length + ' XP'] });
     })();
@@ -160,7 +160,7 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
     saveWorkout: async (hard: string) => {
       const cur = s!;
       const rec: Rec = {
-        key: cur.key, workout: W!.name, week: cur.week, date: new Date(cur.startedAt!).toISOString().slice(0, 10),
+        key: cur.key, workout: W!.name, week: cur.week, date: ymd(new Date(cur.startedAt!)),
         createdAt: cur.endedAt!, totalSec: Math.round((cur.endedAt! - cur.startedAt!) / 1000),
         exercises: W!.items.map(i => ({ name: i.name, rx: rxFor(i, cur.week), sec: Math.round(itemSec(cur.items[i.id])), done: !!cur.items[i.id]?.done })),
         score: actions.autoScore(), feel: cur.feel || null, hard: hard.trim(),
@@ -173,7 +173,7 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
     saveQuest: async () => {
       const cur = s!, Qd = QUESTS[cur.key as 'Q' | 'P'];
       const goals = cur.key === 'Q' ? QUESTS.Q.goals(cur.week) : QUESTS.P.goals(gear);
-      const rec: Rec = { key: cur.key, workout: Qd.title, week: cur.week, date: new Date().toISOString().slice(0, 10), createdAt: Date.now(), totalSec: 0,
+      const rec: Rec = { key: cur.key, workout: Qd.title, week: cur.week, date: ymd(new Date()), createdAt: Date.now(), totalSec: 0,
         exercises: goals.map(g => ({ name: g.label, rx: String(g.target), done: true })), score: '', feel: null, hard: '' };
       const { before, after } = await addRec(rec);
       update({ ...cur, saved: true });
@@ -181,12 +181,12 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
       notify({ title: cur.key === 'P' ? 'PENALTY CLEARED' : 'QUEST COMPLETE', lines: [Qd.title + ' complete.', ...rewardLines(rec.key, before, after)] });
     },
     saveSecret: async (text: string) => {
-      const { before, after } = await addRec({ key: 'S', workout: 'Secret Quest', week, date: today.toISOString().slice(0, 10), createdAt: Date.now(), totalSec: 0, exercises: [], score: text, feel: null, hard: '' });
+      const { before, after } = await addRec({ key: 'S', workout: 'Secret Quest', week, date: ymd(today), createdAt: Date.now(), totalSec: 0, exercises: [], score: text, feel: null, hard: '' });
       beep(1175, true);
       notify({ title: 'SECRET QUEST', tone: 'secret', lines: ['Secret quest complete.', ...rewardLines('S', before, after)] });
     },
     saveWeight: async (kg: number) => {
-      const { before, after } = await addRec({ key: 'W', workout: 'Weigh-in', kg, week, date: today.toISOString().slice(0, 10), createdAt: Date.now(), totalSec: 0, exercises: [], score: kg + ' kg', feel: null, hard: '' });
+      const { before, after } = await addRec({ key: 'W', workout: 'Weigh-in', kg, week, date: ymd(today), createdAt: Date.now(), totalSec: 0, exercises: [], score: kg + ' kg', feel: null, hard: '' });
       beep(1175, true);
       notify({ title: 'WEIGH-IN', lines: ['Weight recorded: ' + kg + ' kg.', ...rewardLines('W', before, after)] });
     },

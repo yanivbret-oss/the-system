@@ -150,8 +150,8 @@ export const MOVES: Record<string, [string, string, string]> = {
 };
 // Looping anime demo videos of each move, keyed like MOVES
 export const DEMOS: Record<string, string> = {
-  pushup: 'https://d8j0ntlcm91z4.cloudfront.net/user_3I0Y4x5W8ur9VRD7pF8Z6SDNlRM/hf_20261024_184744_6544047a-77c9-4bbe-be2c-b68485e0053a.mp4',
-  deepsquat: 'https://d8j0ntlcm91z4.cloudfront.net/user_3I0Y4x5W8ur9VRD7pF8Z6SDNlRM/hf_20261024_184744_3ef33930-bb3c-4094-b7d3-f625b123bb7f.mp4',
+  pushup: 'https://d8j0ntlcm91z4.cloudfront.net/user_3I0Y4x5W8ur9VRD7pF8Z6SDNlRM/hf_20261024_190239_3f753138-dbed-4ab9-b284-587de362893f.mp4',
+  deepsquat: 'https://d8j0ntlcm91z4.cloudfront.net/user_3I0Y4x5W8ur9VRD7pF8Z6SDNlRM/hf_20261024_190239_f2357ccb-650b-4393-98d3-461db72dc45f.mp4',
 };
 export const HOW: Record<string, string[]> = {
   warm: ['goblet', 'bandpull', 'inchworm'], a1: ['goblet'], a2: ['bulgarian', 'revlunge'], a3: ['slrdl'], a4: ['swing'], a5: ['goblet', 'burpee'],

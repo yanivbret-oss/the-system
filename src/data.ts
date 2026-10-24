@@ -89,7 +89,7 @@ export function workoutFor(k: WorkoutKey, gear: Gear = 'basic'): Workout {
   if (gear === 'basic') return w;
   return { ...w, ...(w.alt?.[gear] || {}), items: w.items.map(it => ({ ...it, ...(it.alt?.[gear] || {}) })) };
 }
-export const KEY_NAMES: Record<string, string> = { Q: 'Daily Quest', P: 'Penalty Quest', W: 'Weigh-in', S: 'Secret Quest' };
+export const KEY_NAMES: Record<string, string> = { Q: 'Daily Quest', P: 'Penalty Quest', W: 'Weigh-in', S: 'Secret Quest', X: 'Weigh-in missed' };
 
 // Counter-style quests: the daily quest on rest days, and the penalty quest
 export type Goal = { id: string; label: string; target: number; unit?: string; steps?: number[]; timer?: boolean; how: string };
@@ -115,7 +115,8 @@ export const QUESTS = {
   },
 };
 
-export const XP: Record<string, number> = { Q: 30, A: 100, B: 100, C: 100, D: 200, P: 0, W: 20, S: 50 };
+export const XP: Record<string, number> = { Q: 30, A: 100, B: 100, C: 100, D: 200, P: 0, W: 20, S: 50, X: -20 };
+// X: a missed weekly weigh-in costs what reporting it would have earned
 export const XP_PER_LEVEL = 300;
 
 // How-to cues + a YouTube search for a demo video

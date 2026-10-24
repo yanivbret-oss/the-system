@@ -52,6 +52,7 @@ const scenarios = [
   { name: '29a-home-new-achievement', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04' }, history: [...week1.slice().reverse(), ...many], 'ach-seen': ALL_ACH, 'ach-viewed': ['Awakening','Gate Opener'] } },
   { name: '29b-status-new-achievement', height: 2700, time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04' }, history: [...week1.slice().reverse(), ...many], 'ach-seen': ALL_ACH, 'ach-viewed': ['Awakening','Gate Opener'] }, act: async p => { await p.getByRole('tab', { name: 'Status' }).click(); } },
   { name: '30-weigh-in-popup', keepWeigh: true, time: at(2026,10,30, 8), seed: { profile, history: [rec('C', at(2026,10,30,7,30)), ...week1.slice().reverse()] }, act: async p => { await p.getByLabel('Weight in kg').fill('90.4'); } },
+  { name: '31-weigh-in-missed-penalty', keepPopups: true, time: at(2026,10,25, 12), seed: { profile: { ...profile, startDate: '2026-10-04', trialSeen: true }, history: many.filter(x => !(x.key === 'W' && x.createdAt > at(2026,10,15))) } },
   { name: '26-home-premium', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04', premium: true, trialSeen: true, rank: 'B' }, history: [...week1.slice().reverse(), ...many] } },
 ];
 

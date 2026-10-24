@@ -68,7 +68,7 @@ export function itemSec(s?: ItemState, now = Date.now()) { if (!s) return 0; ret
 export const onDay = (h: Rec[], d: Date, keys?: string[]) => { const s = d.toDateString(); return h.some(x => new Date(x.createdAt).toDateString() === s && (!keys || keys.includes(x.key))); };
 export function player(h: Rec[]) {
   const c = (k: string) => h.filter(x => x.key === k).length;
-  const xp = h.reduce((s, x) => s + (XP[x.key] || 0), 0);
+  const xp = Math.max(0, h.reduce((s, x) => s + (XP[x.key] || 0), 0));
   // Rising curve: level n -> n+1 costs 300 + 75*(n-1) XP
   let level = 1, need = XP_PER_LEVEL, into = xp;
   while (into >= need) { into -= need; level++; need = XP_PER_LEVEL + 75 * (level - 1); }
@@ -95,16 +95,26 @@ export const secretFor = (d: Date, gear: Gear = 'basic') => {
   return pool[dayHash(d) % pool.length];
 };
 export function weekStart(d: Date) { const w = startOfDay(d); w.setDate(w.getDate() - w.getDay()); return w; }
+// Full weeks since the player started that ended with no weigh-in and no penalty for it yet
+export function missedWeighIns(h: Rec[], p: Profile, today: Date) {
+  const out: Date[] = [], w = weekStart(parseYmd(p.startDate));
+  w.setDate(w.getDate() + 7);
+  for (; w < weekStart(today); w.setDate(w.getDate() + 7)) {
+    const end = new Date(w); end.setDate(end.getDate() + 7);
+    if (!h.some(x => (x.key === 'W' || x.key === 'X') && x.createdAt >= w.getTime() && x.createdAt < end.getTime())) out.push(new Date(end.getTime() - 60e3));
+  }
+  return out;
+}
 export const weights = (h: Rec[]) => h.filter(x => x.key === 'W' && x.kg).sort((a, b) => a.createdAt - b.createdAt);
 
 export const ACH: [string, string, string, (h: Rec[], today: Date) => boolean][] = [
-  ['Awakening', 'Completed your first quest', 'The first step', h => h.some(x => x.key !== 'W')],
+  ['Awakening', 'Completed your first quest', 'The first step', h => h.some(x => !'WX'.includes(x.key))],
   ['Gate Opener', 'Survived your first Red Gate', 'A red door', h => h.some(x => x.key === 'D')],
   ['Gate Hunter', 'Cleared 4 Red Gates', 'Four doors', h => h.filter(x => x.key === 'D').length >= 4],
   ['Streak 7', '7 days in a row', 'A week without a break', (h, t) => streak(h, t) >= 7],
   ['Streak 30', '30 days in a row', 'A month without a break', (h, t) => streak(h, t) >= 30],
   ['Early Bird', 'Finished a workout before 7:30', 'Before everyone', h => h.some(x => 'ABCD'.includes(x.key) && new Date(x.createdAt).getHours() * 60 + new Date(x.createdAt).getMinutes() < 450)],
-  ['Night Owl', 'Completed a quest after 22:00', 'Just before midnight', h => h.some(x => x.key !== 'W' && new Date(x.createdAt).getHours() >= 22)],
+  ['Night Owl', 'Completed a quest after 22:00', 'Just before midnight', h => h.some(x => !'WX'.includes(x.key) && new Date(x.createdAt).getHours() >= 22)],
   ['Penalty Survivor', 'Completed a penalty quest', 'Out of the zone', h => h.some(x => x.key === 'P')],
   ['Shadow', 'Completed a secret quest', 'What no one sees', h => h.some(x => x.key === 'S')],
   ['Machine', 'Felt 5/5 after a Red Gate', 'Like it was nothing', h => h.some(x => x.key === 'D' && x.feel === 5)],

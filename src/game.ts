@@ -3,7 +3,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { WORKOUTS, QUESTS, XP, WorkoutKey, Item, workoutFor } from './data';
 import { beep } from './sound';
 import {
-  Profile, Rec, Session, store, rxFor, cdFor, itemSec, player, fmt, weeksIn, planWeek, todaysWorkout, ACH,
+  Profile, Rec, Session, store, rxFor, cdFor, itemSec, player, fmt, weeksIn, planWeek, todaysWorkout, ACH, missedWeighIns,
 } from './logic';
 
 export type Notice = { title: string; lines: string[]; tone?: 'normal' | 'penalty' | 'secret' | 'gold' };
@@ -53,6 +53,21 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
       store.saveAchSeen(names);
     });
   }, [history.length]);
+
+  // a week that ended without a weigh-in is punished once, at the next start
+  const penalized = useRef(false);
+  useEffect(() => {
+    if (penalized.current) return;
+    penalized.current = true;
+    const missed = missedWeighIns(history, profile, today);
+    if (!missed.length) return;
+    (async () => {
+      let h = history;
+      for (const d of missed) h = await store.addRec({ key: 'X', workout: 'Weigh-in missed', week, date: d.toISOString().slice(0, 10), createdAt: d.getTime(), totalSec: 0, exercises: [], score: '', feel: null, hard: '' });
+      setHistory(h);
+      notify({ title: 'PENALTY', tone: 'penalty', lines: [missed.length > 1 ? 'You did not report your weight for ' + missed.length + ' weeks.' : 'You did not report your weight last week.', 'Penalty: ' + XP.X * missed.length + ' XP'] });
+    })();
+  }, []);
 
   // ---- the clock: timers, EMOM minute beeps, plank auto-stop
   useEffect(() => {

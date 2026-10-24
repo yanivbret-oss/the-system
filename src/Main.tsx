@@ -337,7 +337,7 @@ function WeighQuest({ last, onSave, onLater }: { last?: number; onSave: (kg: num
           </Row>
           <T muted style={{ textAlign: 'center', fontSize: 13 }}>In the morning, before eating. Reward: 20 XP</T>
           <T glow style={{ textAlign: 'center', fontSize: 15, lineHeight: 24, paddingHorizontal: 10 }}>
-            <Text style={{ color: t.warn }}>WARNING</Text>: A Player who does not measure cannot grow stronger.
+            <Text style={{ color: t.warn }}>WARNING</Text>: Failure to report your weight this week will result in a penalty of 20 XP.
           </T>
           <Btn primary big label="Report weight" disabled={!ok} onPress={() => onSave(v)} />
           <Pressable onPress={onLater} hitSlop={10} style={{ alignSelf: 'center' }}><Caps size={11} glow={false} style={{ color: t.muted }}>Later</Caps></Pressable>
@@ -404,7 +404,7 @@ function StatusTab({ profile, history, fresh }: { profile: Profile; history: Rec
           <Divider />
           <Row style={{ justifyContent: 'space-around' }}>
             <View style={{ alignItems: 'center' }}><Num size={22}>{streak(history, today)}</Num><Caps size={9} glow={false} style={{ color: t.muted }}>Day streak</Caps></View>
-            <View style={{ alignItems: 'center' }}><Num size={22}>{history.filter(x => x.key !== 'W').length}</Num><Caps size={9} glow={false} style={{ color: t.muted }}>Quests</Caps></View>
+            <View style={{ alignItems: 'center' }}><Num size={22}>{history.filter(x => !'WX'.includes(x.key)).length}</Num><Caps size={9} glow={false} style={{ color: t.muted }}>Quests</Caps></View>
             <View style={{ alignItems: 'center' }}><Num size={22}>{history.filter(x => x.key === 'D').length}</Num><Caps size={9} glow={false} style={{ color: t.muted }}>Red Gates</Caps></View>
           </Row>
         </Win>
@@ -413,12 +413,12 @@ function StatusTab({ profile, history, fresh }: { profile: Profile; history: Rec
       {ws.length ? (
         <Appear delay={80}>
           <Win title="BODY" icon="i">
-            <Row style={{ justifyContent: 'space-between' }}>
-              <View><Caps size={10} glow={false} style={{ color: t.muted }}>Latest</Caps><Num size={24}>{ws[ws.length - 1].kg + ' kg'}</Num></View>
+            <Row style={{ gap: 14 }}>
+              <View><Caps size={10} glow={false} style={{ color: t.muted }}>Latest</Caps><Num size={20}>{ws[ws.length - 1].kg + ' kg'}</Num></View>
+              <View style={{ flex: 1 }}>{ws.length > 1 ? <Spark values={ws.map(x => x.kg!)} color={t.accent} /> : null}</View>
               <View style={{ alignItems: 'flex-end' }}><Caps size={10} glow={false} style={{ color: t.muted }}>Since start</Caps>
-                <Num size={24} color={t.accent}>{(() => { const d = Math.round((ws[ws.length - 1].kg! - ws[0].kg!) * 10) / 10; return (d > 0 ? '+' : '') + d; })()}</Num></View>
+                <Num size={20} color={t.accent}>{(() => { const d = Math.round((ws[ws.length - 1].kg! - ws[0].kg!) * 10) / 10; return (d > 0 ? '+' : '') + d; })()}</Num></View>
             </Row>
-            {ws.length > 1 ? <Spark values={ws.map(x => x.kg!)} color={t.accent} /> : null}
           </Win>
         </Appear>
       ) : null}
@@ -618,8 +618,8 @@ function History({ history }: { history: Rec[] }) {
         {!history.length ? <T muted style={{ textAlign: 'center' }}>Completed quests will appear here.</T> : list.map((x, i) => (
           <View key={x.createdAt} style={{ gap: 2, paddingTop: i ? 10 : 0, borderTopWidth: i ? 1 : 0, borderColor: t.line }}>
             <Row style={{ justifyContent: 'space-between' }}>
-              <T style={{ fontFamily: F.semi, fontSize: 14, color: x.key === 'D' || x.key === 'P' ? t.warn : t.fg }}>{x.key === 'W' ? 'Weigh-in: ' + x.kg + ' kg' : x.workout || KEY_NAMES[x.key] || x.key}</T>
-              <Num size={14} color={t.muted}>{'WSQP'.includes(x.key) ? '+' + (XP[x.key] || 0) + ' XP' : fmt(x.totalSec)}</Num>
+              <T style={{ fontFamily: F.semi, fontSize: 14, color: 'DPX'.includes(x.key) ? t.warn : t.fg }}>{x.key === 'W' ? 'Weigh-in: ' + x.kg + ' kg' : x.workout || KEY_NAMES[x.key] || x.key}</T>
+              <Num size={14} color={t.muted}>{'WSQPX'.includes(x.key) ? (XP[x.key] < 0 ? '' : '+') + (XP[x.key] || 0) + ' XP' : fmt(x.totalSec)}</Num>
             </Row>
             <T muted style={{ fontSize: 12 }}>{new Date(x.createdAt).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + (x.score && x.key !== 'S' && x.key !== 'W' ? ' · ' + x.score : '') + (x.feel ? ' · felt ' + x.feel + '/5' : '')}</T>
           </View>
@@ -660,6 +660,6 @@ function NoticeOverlay({ n, onClose }: { n: { title: string; lines: string[]; to
 
 function Spark({ values, color }: { values: number[]; color: string }) {
   const mn = Math.min(...values) - 0.5, mx = Math.max(...values) + 0.5;
-  const pts = values.map((v, i) => (i / (values.length - 1) * 300).toFixed(1) + ',' + (44 - (v - mn) / (mx - mn) * 40).toFixed(1)).join(' ');
-  return <Svg width="100%" height={48} viewBox="0 0 300 48" preserveAspectRatio="none"><Polyline points={pts} fill="none" stroke={color} strokeWidth={2} /></Svg>;
+  const pts = values.map((v, i) => (i / (values.length - 1) * 300).toFixed(1) + ',' + (26 - (v - mn) / (mx - mn) * 24).toFixed(1)).join(' ');
+  return <Svg width="100%" height={28} viewBox="0 0 300 28" preserveAspectRatio="none"><Polyline points={pts} fill="none" stroke={color} strokeWidth={2} /></Svg>;
 }

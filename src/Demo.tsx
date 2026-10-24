@@ -10,7 +10,7 @@ export function Demo({ k }: { k?: string }) {
   return src ? <Loop src={src} /> : null;
 }
 
-function Loop({ src }: { src: string }) {
+function Loop({ src }: { src: number }) {
   const t = useT();
   const player = useVideoPlayer(src, p => { p.loop = true; p.muted = true; p.play(); });
   return (

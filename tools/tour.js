@@ -65,7 +65,7 @@ const scenarios = [
     const p = await ctx.newPage();
     const errs = []; p.on('pageerror', e => errs.push(e.message));
     // demo loops: serve local copies (DEMO_DIR holds <move>.webm, which headless Chromium can play)
-    if (process.env.DEMO_DIR) await p.route('**/*.mp4', r => { const k = Object.entries(DEMO_SRC).find(([, u]) => u === r.request().url()); return k ? r.fulfill({ path: `${process.env.DEMO_DIR}/${k[0]}.webm`, contentType: 'video/webm' }) : r.continue(); });
+    if (process.env.DEMO_DIR) await p.route('**/*.mp4', r => { const k = Object.entries(DEMO_SRC).find(([n]) => new URL(r.request().url()).pathname.split('/').pop().startsWith(n + '.')); return k ? r.fulfill({ path: `${process.env.DEMO_DIR}/${k[0]}.webm`, contentType: 'video/webm' }) : r.continue(); });
     await p.clock.install({ time: new Date(sc.time) }); await p.clock.resume();
     await p.addInitScript(seed => { localStorage.clear(); for (const [k, v] of Object.entries(seed || {})) localStorage.setItem(k, JSON.stringify(v)); }, { 'ach-viewed': ALL_ACH, ...(sc.seed || {}) });
     await p.goto(base); await p.waitForTimeout(1500);

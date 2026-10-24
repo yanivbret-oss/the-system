@@ -149,10 +149,35 @@ export const MOVES: Record<string, [string, string, string]> = {
   dbpress: ['Seated dumbbell shoulder press', 'Sit with back support, dumbbells at shoulder height. Press overhead to straight arms, lower under control.', 'seated dumbbell shoulder press form'],
   plank: ['Plank', 'On forearms and toes, body straight from head to heels. Brace your abs and glutes; do not let your hips sag or pike up.', 'plank proper form'],
 };
-// Looping anime demo videos of each move, keyed like MOVES
-export const DEMOS: Record<string, string> = {
-  pushup: 'https://d8j0ntlcm91z4.cloudfront.net/user_3I0Y4x5W8ur9VRD7pF8Z6SDNlRM/hf_20261024_190239_3f753138-dbed-4ab9-b284-587de362893f.mp4',
-  deepsquat: 'https://d8j0ntlcm91z4.cloudfront.net/user_3I0Y4x5W8ur9VRD7pF8Z6SDNlRM/hf_20261024_190239_f2357ccb-650b-4393-98d3-461db72dc45f.mp4',
+// Looping anime demo videos of each move, keyed like MOVES; bundled so they play offline
+export const DEMOS: Record<string, number> = {
+  backsquat: require('../assets/demos/backsquat.mp4'),
+  bandpull: require('../assets/demos/bandpull.mp4'),
+  bulgarian: require('../assets/demos/bulgarian.mp4'),
+  burpee: require('../assets/demos/burpee.mp4'),
+  cablerow: require('../assets/demos/cablerow.mp4'),
+  dbpress: require('../assets/demos/dbpress.mp4'),
+  deepsquat: require('../assets/demos/deepsquat.mp4'),
+  dips: require('../assets/demos/dips.mp4'),
+  goblet: require('../assets/demos/goblet.mp4'),
+  highknees: require('../assets/demos/highknees.mp4'),
+  inchworm: require('../assets/demos/inchworm.mp4'),
+  intervals: require('../assets/demos/intervals.mp4'),
+  jumpsquat: require('../assets/demos/jumpsquat.mp4'),
+  negative: require('../assets/demos/negative.mp4'),
+  pike: require('../assets/demos/pike.mp4'),
+  plank: require('../assets/demos/plank.mp4'),
+  press: require('../assets/demos/press.mp4'),
+  pullup: require('../assets/demos/pullup.mp4'),
+  pushup: require('../assets/demos/pushup.mp4'),
+  rdl: require('../assets/demos/rdl.mp4'),
+  revlunge: require('../assets/demos/revlunge.mp4'),
+  slrdl: require('../assets/demos/slrdl.mp4'),
+  superman: require('../assets/demos/superman.mp4'),
+  swing: require('../assets/demos/swing.mp4'),
+  tablerow: require('../assets/demos/tablerow.mp4'),
+  thruster: require('../assets/demos/thruster.mp4'),
+  trxrow: require('../assets/demos/trxrow.mp4'),
 };
 export const HOW: Record<string, string[]> = {
   warm: ['goblet', 'bandpull', 'inchworm'], a1: ['goblet'], a2: ['bulgarian', 'revlunge'], a3: ['slrdl'], a4: ['swing'], a5: ['goblet', 'burpee'],

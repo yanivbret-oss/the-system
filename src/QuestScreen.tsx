@@ -154,15 +154,15 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
       </Row>
       <Demo k={(it.how || HOW[it.id] || []).find(k => DEMOS[k])} />
       {nSets ? (
-        <Row style={{ flexWrap: 'wrap', paddingLeft: 34 }}>
+        <Row>
           {Array.from({ length: nSets }, (_, i) => {
             const on = !!st.sets?.[i] || !!st.done;
-            return <Btn key={i} small label={'Set ' + (i + 1)} on={on} disabled={!live || !!st.done} onPress={() => g.actions.toggleSet(it, i, nSets)} style={{ minWidth: 64 }} />;
+            return <Btn key={i} small label={'Set ' + (i + 1)} on={on} disabled={!live || !!st.done} onPress={() => g.actions.toggleSet(it, i, nSets)} style={{ flex: 1 }} />;
           })}
         </Row>
       ) : null}
       {timer || live ? (
-        <Row style={{ paddingLeft: 34, flexWrap: 'wrap' }}>
+        <Row>
           {timer ? (
             <View style={{ minWidth: 76 }}>
               <Num size={active ? 34 : 20} color={active ? t.bright : t.muted}>{timer}</Num>
@@ -172,15 +172,15 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
           {live ? (active ? (
             <>
               {nSets && nextSet >= 0
-                ? <Btn primary small label={'Set ' + (nextSet + 1) + ' of ' + nSets + ' done'} onPress={() => g.actions.toggleSet(it, nextSet, nSets)} />
-                : <Btn primary small label="Done" onPress={() => g.actions.finishItem(it.id)} />}
-              {it.finisher && it.countdown && !it.emom ? <Btn small label={'Round done (' + (st.rounds || 0) + ')'} onPress={() => g.actions.round(it.id)} /> : null}
+                ? <Btn primary small label={'Set ' + (nextSet + 1) + ' of ' + nSets + ' done'} onPress={() => g.actions.toggleSet(it, nextSet, nSets)} style={{ flex: 1 }} />
+                : <Btn primary small label="Done" onPress={() => g.actions.finishItem(it.id)} style={{ flex: 1 }} />}
+              {it.finisher && it.countdown && !it.emom ? <Btn small label={'Round done (' + (st.rounds || 0) + ')'} onPress={() => g.actions.round(it.id)} style={{ flex: 1 }} /> : null}
             </>
-          ) : !st.done ? <Btn small label={st.sec ? 'Resume' : 'Start'} onPress={() => g.actions.startItem(it.id)} />
-            : <Btn small label="Undo" onPress={() => g.actions.undoItem(it.id)} />) : null}
+          ) : !st.done ? <Btn small label={st.sec ? 'Resume' : 'Start'} onPress={() => g.actions.startItem(it.id)} style={{ flex: 1 }} />
+            : <Btn small label="Undo" onPress={() => g.actions.undoItem(it.id)} style={{ flex: 1 }} />) : null}
         </Row>
       ) : null}
-      <View style={{ paddingLeft: 34 }}><HowTo keys={it.how || HOW[it.id]} /></View>
+      <HowTo keys={it.how || HOW[it.id]} />
     </View>
   );
 }

@@ -51,6 +51,7 @@ const scenarios = [
   { name: '28-workout-demos', height: 1300, time: at(2026,10,28, 9, 20), seed: { profile, session: sess('B', at(2026,10,28), { startedAt: at(2026,10,28,9,0), active: 'b4', items: { warm: { sec: 480, done: true }, b1: { sec: 300, done: true }, b2: { sec: 300, done: true }, b3: { sec: 300, done: true }, b4: { sec: 0, runningSince: at(2026,10,28,9,19), sets: [true] } } }) }, act: async p => { await p.waitForTimeout(2500); } },
   { name: '29a-home-new-achievement', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04' }, history: [...week1.slice().reverse(), ...many], 'ach-seen': ALL_ACH, 'ach-viewed': ['Awakening','Gate Opener'] } },
   { name: '29b-status-new-achievement', height: 2700, time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04' }, history: [...week1.slice().reverse(), ...many], 'ach-seen': ALL_ACH, 'ach-viewed': ['Awakening','Gate Opener'] }, act: async p => { await p.getByRole('tab', { name: 'Status' }).click(); } },
+  { name: '30-weigh-in-popup', keepWeigh: true, time: at(2026,10,30, 8), seed: { profile, history: [rec('C', at(2026,10,30,7,30)), ...week1.slice().reverse()] }, act: async p => { await p.getByLabel('Weight in kg').fill('90.4'); } },
   { name: '26-home-premium', time: at(2026,10,29, 9), seed: { profile: { ...profile, startDate: '2026-10-04', premium: true, trialSeen: true, rank: 'B' }, history: [...week1.slice().reverse(), ...many] } },
 ];
 
@@ -69,6 +70,7 @@ const scenarios = [
     await p.goto(base); await p.waitForTimeout(1500);
     // dismiss queued achievement popups unless the scenario is about them
     if (!sc.keepPopups) for (let i = 0; i < 6; i++) { const ok = p.getByLabel('OK'); if (await ok.count()) { await ok.first().click(); await p.waitForTimeout(250); } }
+    if (!sc.keepWeigh) { const later = p.getByText('Later', { exact: true }); if (await later.count()) { await later.first().click(); await p.waitForTimeout(300); } }
     if (sc.act) { await sc.act(p); await p.waitForTimeout(900); }
     if (sc.end) { await p.mouse.move(195, 500); await p.mouse.wheel(0, 4000); await p.waitForTimeout(500); }
     await p.screenshot({ path: `${out}/${sc.name}.png` });

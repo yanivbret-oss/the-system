@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, ScrollViewInstance, ViewInstance } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Header, useT } from './ui';
+import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Header, GoalHeading, useT } from './ui';
 import { F } from './theme';
 import { WORKOUTS, QUESTS, XP, MOVES, HOW, DEMOS, Item, WorkoutKey } from './data';
 import { fmt, rxFor, cdFor, setsFor, itemSec, Session } from './logic';
@@ -198,11 +198,7 @@ function CounterQuest({ g }: { g: Game }) {
     <Appear>
       <Win hero title="QUEST INFO" tone={pen ? 'penalty' : 'normal'}>
         <T glow style={{ textAlign: 'center', fontSize: 15, color: t.fg }}>{'[' + (pen ? 'Penalty Quest: Survival' : 'Daily Quest: ' + Qd.title) + ' has arrived.]'}</T>
-        <View style={{ alignItems: 'center', gap: 3, marginTop: 6 }}>
-          <Caps size={17} color={t.bright} style={{ letterSpacing: 3 }}>Goal</Caps>
-          <View style={{ width: 58, height: 1.5, backgroundColor: t.bright, boxShadow: `0 0 6px ${t.glow}` }} />
-          <View style={{ width: 58, height: 1, backgroundColor: t.bright, opacity: 0.6, marginTop: 1 }} />
-        </View>
+        <GoalHeading />
         <View style={{ gap: 4, paddingHorizontal: 6 }}>
           {goals.map(x => {
             const n = Math.min(count(x.id, x.timer), x.target), met = n >= x.target;

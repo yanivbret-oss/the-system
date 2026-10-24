@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView } from 'react-native';
 import Svg, { Polyline, Rect, Path, Circle } from 'react-native-svg';
-import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Ring, Meter, useT, Tone } from './ui';
+import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Ring, Meter, GoalHeading, useT, Tone } from './ui';
 import { F } from './theme';
 import { WORKOUTS, QUESTS, XP, DAYS, DAY_LETTERS, KEY_NAMES, GEAR, Gear } from './data';
 import {
@@ -37,6 +37,14 @@ export function Main({ profile, history, setHistory, onRedGate, onProfile }: { p
     g.notify({ title: 'TRIAL ENDED', tone: 'gold', lines: ['Your ' + TRIAL_DAYS + '-day premium trial has ended.', 'The Red Gate and ranks above ' + FREE_RANK_CAP + ' are now sealed.', 'Open the Premium tab to keep the full System.'] });
     onProfile({ ...profile, trialSeen: true });
   }, [premium]);
+  // the weekly weigh-in pops up as a System window once per app start, until it is done
+  const weighDue = !weights(history).some(x => new Date(x.createdAt) >= weekStart(g.today));
+  const [weighOpen, setWeighOpen] = useState(false);
+  const weighShown = useRef(false);
+  const busy = !s || inQuest || g.running || (!!s.endedAt && !s.saved) || !!g.notices.length;
+  useEffect(() => {
+    if (weighDue && !busy && !weighShown.current) { weighShown.current = true; setWeighOpen(true); }
+  }, [weighDue, busy]);
   if (!s) return null;
 
   const showQuest = inQuest || g.running || (!!s.endedAt && !s.saved);
@@ -47,7 +55,7 @@ export function Main({ profile, history, setHistory, onRedGate, onProfile }: { p
       {showQuest ? <QuestScreen g={g} onBack={() => setInQuest(false)} /> : (
         <>
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}>
-            {tab === 'quest' ? <QuestTab g={g} profile={profile} history={history} open={open} onStatus={() => setTab('status')} />
+            {tab === 'quest' ? <QuestTab g={g} profile={profile} history={history} open={open} onStatus={() => setTab('status')} onWeigh={() => setWeighOpen(true)} />
               : tab === 'status' ? <StatusTab profile={profile} history={history} fresh={fresh} />
               : tab === 'premium' ? <PremiumWin g={g} profile={profile} />
               : <Settings g={g} profile={profile} onProfile={onProfile} />}
@@ -55,6 +63,7 @@ export function Main({ profile, history, setHistory, onRedGate, onProfile }: { p
           <TabBar tab={tab} setTab={setTab} badge={unseen.length ? 'status' : undefined} />
         </>
       )}
+      {weighOpen && weighDue && !g.notices.length ? <WeighQuest last={weights(history).slice(-1)[0]?.kg} onSave={kg => { setWeighOpen(false); g.actions.saveWeight(kg); }} onLater={() => setWeighOpen(false)} /> : null}
       {g.notices.length ? <NoticeOverlay n={g.notices[0]} onClose={g.dismiss} /> : null}
     </View>
   );
@@ -108,7 +117,7 @@ function TabIcon({ k, color, on }: { k: Tab; color: string; on: boolean }) {
 }
 
 // ---------- QUESTS: today's quest, the week strip, notifications, other gates
-function QuestTab({ g, profile, history, open, onStatus }: { g: ReturnType<typeof useGame>; profile: Profile; history: Rec[]; open: (k: string) => void; onStatus: () => void }) {
+function QuestTab({ g, profile, history, open, onStatus, onWeigh }: { g: ReturnType<typeof useGame>; profile: Profile; history: Rec[]; open: (k: string) => void; onStatus: () => void; onWeigh: () => void }) {
   const t = useT();
   const today = g.today, p = player(history);
   const todayW = g.todayW;
@@ -205,7 +214,7 @@ function QuestTab({ g, profile, history, open, onStatus }: { g: ReturnType<typeo
       )}
 
 
-      {weighDue ? <WeighIn g={g} last={ws[ws.length - 1]?.kg} /> : null}
+      {weighDue ? <WeighReminder onPress={onWeigh} /> : null}
 
       <View style={{ gap: 10, marginTop: 4 }}>
         <Caps size={12} style={{ color: t.muted }} glow={false}>Gates this week</Caps>
@@ -290,22 +299,51 @@ function WeekStrip({ history, profile, today }: { history: Rec[]; profile: Profi
   );
 }
 
-function WeighIn({ g, last }: { g: ReturnType<typeof useGame>; last?: number }) {
+// Home reminder while the weigh-in is open; the quest itself is a pop-up window
+function WeighReminder({ onPress }: { onPress: () => void }) {
   const t = useT();
-  const [kg, setKg] = useState('');
   return (
     <Appear delay={200}>
-      <Win title="WEEKLY QUEST" icon="!">
-        <T style={{ textAlign: 'center', fontFamily: F.semi, fontSize: 16, color: t.bright }}>Weigh-in</T>
-        <T muted style={{ textAlign: 'center', fontSize: 13 }}>Once a week, in the morning before eating. Reward: 20 XP</T>
-        <Row>
-          <TextInput value={kg} onChangeText={setKg} keyboardType="decimal-pad" placeholder={last ? String(last) : '80.0'} placeholderTextColor={t.muted}
-            style={{ flex: 1, minWidth: 0, width: 80, borderWidth: 1, borderColor: t.line, color: t.bright, fontFamily: F.semi, fontSize: 20, textAlign: 'center', padding: 8, backgroundColor: 'rgba(0,0,0,0.3)' }} />
-          <Caps size={12} glow={false} style={{ color: t.muted }}>kg</Caps>
-          <Btn primary label="Save" onPress={() => { const v = Math.round(parseFloat(kg) * 10) / 10; if (v > 30 && v < 250) { g.actions.saveWeight(v); setKg(''); } }} />
-        </Row>
-      </Win>
+      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Weekly quest: weigh-in"
+        style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: t.edge, paddingVertical: 12, paddingHorizontal: 14, backgroundColor: pressed ? 'rgba(40, 110, 200, 0.16)' : 'rgba(10, 30, 60, 0.45)', boxShadow: `0 0 12px ${t.glow}` })}>
+        <View style={{ width: 22, height: 22, borderWidth: 1, borderColor: t.bright, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: t.bright, fontFamily: F.bold, fontSize: 13 }}>!</Text></View>
+        <View style={{ flex: 1 }}>
+          <Caps size={10} color={t.accent} glow={false}>Weekly quest</Caps>
+          <T style={{ fontFamily: F.semi, fontSize: 15, color: t.bright }}>Weigh-in</T>
+        </View>
+        <Caps size={11} color={t.bright}>Open ›</Caps>
+      </Pressable>
     </Appear>
+  );
+}
+
+// The weekly weigh-in, as a QUEST INFO window like the System's pop-ups
+function WeighQuest({ last, onSave, onLater }: { last?: number; onSave: (kg: number) => void; onLater: () => void }) {
+  const t = useT();
+  const [kg, setKg] = useState('');
+  const v = Math.round(parseFloat(kg) * 10) / 10, ok = v > 30 && v < 250;
+  return (
+    <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 3, 10, 0.8)', justifyContent: 'center', padding: 20 }}>
+      <Appear>
+        <Win hero title="QUEST INFO">
+          <T glow style={{ textAlign: 'center', fontSize: 15, color: t.fg }}>[Weekly Quest: Weigh-in has arrived.]</T>
+          <GoalHeading />
+          <Row style={{ gap: 12, paddingHorizontal: 6, paddingVertical: 8 }}>
+            <T glow style={{ flex: 1, fontSize: 18 }}>Body weight</T>
+            <Text style={{ color: t.bright, fontFamily: F.semi, fontSize: 18 }}>[</Text>
+            <TextInput value={kg} onChangeText={setKg} keyboardType="decimal-pad" placeholder={last ? String(last) : '80.0'} placeholderTextColor={t.dim} autoFocus accessibilityLabel="Weight in kg"
+              style={{ width: 84, borderBottomWidth: 1, borderColor: t.bright, color: t.bright, fontFamily: F.semi, fontSize: 20, textAlign: 'center', paddingVertical: 4 }} />
+            <Text style={{ color: t.bright, fontFamily: F.semi, fontSize: 18 }}>kg]</Text>
+          </Row>
+          <T muted style={{ textAlign: 'center', fontSize: 13 }}>In the morning, before eating. Reward: 20 XP</T>
+          <T glow style={{ textAlign: 'center', fontSize: 15, lineHeight: 24, paddingHorizontal: 10 }}>
+            <Text style={{ color: t.warn }}>WARNING</Text>: A Player who does not measure cannot grow stronger.
+          </T>
+          <Btn primary big label="Report weight" disabled={!ok} onPress={() => onSave(v)} />
+          <Pressable onPress={onLater} hitSlop={10} style={{ alignSelf: 'center' }}><Caps size={11} glow={false} style={{ color: t.muted }}>Later</Caps></Pressable>
+        </Win>
+      </Appear>
+    </View>
   );
 }
 

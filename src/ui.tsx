@@ -258,3 +258,15 @@ export function Divider() {
   const t = useT();
   return <View style={{ height: 1, backgroundColor: t.line }} />;
 }
+
+// "GOAL" with the double underline of the System's quest windows
+export function GoalHeading() {
+  const t = useT();
+  return (
+    <View style={{ alignItems: 'center', gap: 3, marginTop: 6 }}>
+      <Caps size={17} color={t.bright} style={{ letterSpacing: 3 }}>Goal</Caps>
+      <View style={{ width: 58, height: 1.5, backgroundColor: t.bright, boxShadow: `0 0 6px ${t.glow}` }} />
+      <View style={{ width: 58, height: 1, backgroundColor: t.bright, opacity: 0.6, marginTop: 1 }} />
+    </View>
+  );
+}

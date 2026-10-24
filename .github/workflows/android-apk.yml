@@ -1,5 +1,6 @@
-# Builds an installable Android APK on demand (Actions tab, "Run workflow"), so unfinished work does not trigger builds.
-# Each build is published as a GitHub Release, so it can be downloaded straight from the phone.
+# Builds the app on demand (Actions tab, "Run workflow"), so unfinished work does not trigger builds.
+# Each build is published as a GitHub Release: TheSystem.apk to install on a phone, and, once the
+# upload key secrets exist, TheSystem.aab signed with the upload key for Google Play.
 name: Android APK
 on:
   workflow_dispatch:
@@ -20,13 +21,28 @@ jobs:
           java-version: 17
       - run: npm ci
       - run: npx expo prebuild --platform android --no-install
-      - run: ./gradlew assembleRelease --no-daemon
+      - name: Use the Play upload key
+        env:
+          UPLOAD_KEYSTORE_BASE64: ${{ secrets.UPLOAD_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$UPLOAD_KEYSTORE_BASE64" ]; then echo "No upload key secret: building with the debug key only"; exit 0; fi
+          echo "$UPLOAD_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          echo "UPLOAD_STORE_FILE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+          echo "AAB=bundleRelease" >> "$GITHUB_ENV"
+          node tools/sign-release.js
+      - run: ./gradlew assembleRelease $AAB --no-daemon
         working-directory: android
-      - run: cp android/app/build/outputs/apk/release/app-release.apk TheSystem.apk
+        env:
+          UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.UPLOAD_KEYSTORE_PASSWORD }}
+      - run: |
+          cp android/app/build/outputs/apk/release/app-release.apk TheSystem.apk
+          if [ -f android/app/build/outputs/bundle/release/app-release.aab ]; then cp android/app/build/outputs/bundle/release/app-release.aab TheSystem.aab; fi
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           name: The System (build ${{ github.run_number }})
-          body: Android test build. On your phone, download TheSystem.apk and open it to install.
-          files: TheSystem.apk
+          body: Android build. On your phone, download TheSystem.apk and open it to install. TheSystem.aab (when present) is the file to upload to Google Play.
+          files: |
+            TheSystem.apk
+            TheSystem.aab
           make_latest: true

@@ -5,7 +5,7 @@ import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Ring, Meter, GoalHeading,
 import { F } from './theme';
 import { WORKOUTS, QUESTS, XP, DAYS, DAY_LETTERS, KEY_NAMES, GEAR, Gear } from './data';
 import {
-  Profile, Rec, player, streak, onDay, penaltyActive, secretFor, weekStart, weights, ACH, fmt, rxFor, QUEST_KEYS, startOfDay, parseYmd, todaysWorkout, gatesFor, gateDay, gradeFor, isPremium, trialLeft, RANKS, FREE_RANK_CAP, DEFAULT_DAYS, TRIAL_DAYS, store,
+  Profile, Rec, player, streak, onDay, penaltyActive, secretFor, weekStart, weights, ACH, fmt, rxFor, QUEST_KEYS, startOfDay, parseYmd, todaysWorkout, isFirstDay, gatesFor, gateDay, gradeFor, isPremium, trialLeft, RANKS, FREE_RANK_CAP, DEFAULT_DAYS, TRIAL_DAYS, store,
 } from './logic';
 import { useGame } from './game';
 import { QuestScreen } from './QuestScreen';
@@ -210,7 +210,9 @@ function QuestTab({ g, profile, history, open, onStatus, onWeigh }: { g: ReturnT
                 <Caps size={8} glow={false} style={{ color: t.muted, letterSpacing: 1.5 }}>Hrs left</Caps>
               </Ring>
               <View style={{ flex: 1, gap: 6 }}>
-                <Text style={{ color: t.warn, fontFamily: F.semi, fontSize: 13, lineHeight: 19 }}>Complete it by midnight, or face the penalty zone.</Text>
+                {isFirstDay(profile, today)
+                  ? <Text style={{ color: t.good, fontFamily: F.semi, fontSize: 13, lineHeight: 19 }}>Day one is a free day. Clear it for a head start, or begin tomorrow with no penalty.</Text>
+                  : <Text style={{ color: t.warn, fontFamily: F.semi, fontSize: 13, lineHeight: 19 }}>Complete it by midnight, or face the penalty zone.</Text>}
                 <Text style={{ color: t.muted, fontFamily: F.medium, fontSize: 12 }}>{'Reward: ' + (XP[qKey] || 0) + ' XP'}</Text>
               </View>
             </Row>
@@ -231,7 +233,8 @@ function QuestTab({ g, profile, history, open, onStatus, onWeigh }: { g: ReturnT
             // gates ahead stay sealed until their day: the workout is a surprise
             const locked = isRed && !premium;
             const sealed = !cleared && day > today.getDay();
-            const missed = !cleared && !locked && day < today.getDay();
+            const gd = weekStart(today); gd.setDate(gd.getDate() + day);
+            const missed = !cleared && !locked && day < today.getDay() && !isFirstDay(profile, gd);
             if (locked) return (
               <Pressable key={k} onPress={() => g.notify(PREMIUM_NOTICE)} style={({ pressed }) => ({ width: '47%', flexGrow: 1, borderWidth: 1, borderStyle: 'dashed', borderColor: 'rgba(255,201,77,0.55)', paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center', gap: 4,
                 backgroundColor: pressed ? 'rgba(255,201,77,0.12)' : 'rgba(4,10,24,0.6)' })}>
@@ -288,7 +291,7 @@ function WeekStrip({ history, profile, today }: { history: Rec[]; profile: Profi
       {Array.from({ length: 7 }, (_, i) => {
         const d = new Date(ws); d.setDate(ws.getDate() + i);
         const done = onDay(history, d, QUEST_KEYS), past = d.getTime() < t0, isToday = d.getTime() === t0;
-        const missed = past && !done && d >= start;
+        const missed = past && !done && d > start;
         const c = done ? t.good : missed ? t.warn : isToday ? t.bright : t.dim;
         const gate = todaysWorkout(d, profile);
         return (

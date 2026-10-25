@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { XP, WorkoutKey, workoutFor } from './data';
-import { Profile, Rec, QUEST_KEYS, onDay, startOfDay, weekStart, weights, todaysWorkout } from './logic';
+import { Profile, Rec, QUEST_KEYS, onDay, startOfDay, weekStart, weights, todaysWorkout, isFirstDay } from './logic';
 
 // Phone notifications, scheduled on the device for the coming week (no server).
 // Everything is cancelled and scheduled again whenever the profile or the history changes.
@@ -35,7 +35,7 @@ export async function scheduleAll(p: Profile, h: Rec[]) {
     list.push(k
       ? [at(d, p.remindAt ?? DEFAULT_REMIND), 'The Gate has opened', workoutFor(k, p.gear || 'basic').name + ' is waiting. Reward: ' + XP[k] + ' XP']
       : [at(d, p.remindAt ?? DEFAULT_REMIND), 'Daily Quest has arrived', 'Preparation to become strong. Reward: ' + XP.Q + ' XP']);
-    list.push([at(d, WARN_HOUR), 'WARNING', "Complete today's quest by midnight, or face the penalty zone."]);
+    if (!isFirstDay(p, d)) list.push([at(d, WARN_HOUR), 'WARNING', "Complete today's quest by midnight, or face the penalty zone."]);
   }
   // the weekly weigh-in: this week's if it is still due, and next week's
   const ws = weekStart(now), weighed = weights(h).some(x => new Date(x.createdAt) >= ws);

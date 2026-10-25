@@ -36,6 +36,7 @@
       "expo-audio",
       "expo-web-browser",
       "expo-video",
+      "expo-iap",
       [
         "expo-notifications",
         {

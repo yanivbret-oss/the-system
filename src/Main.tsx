@@ -10,6 +10,7 @@ import {
 import { useGame } from './game';
 import { QuestScreen } from './QuestScreen';
 import { askPermission, scheduleAll, REMIND_HOURS, DEFAULT_REMIND } from './notify';
+import * as billing from './billing';
 
 type Tab = 'quest' | 'status' | 'premium' | 'settings';
 
@@ -46,6 +47,13 @@ export function Main({ profile, history, setHistory, onRedGate, onProfile }: { p
   useEffect(() => {
     if (weighDue && !busy && !weighShown.current) { weighShown.current = true; setWeighOpen(true); }
   }, [weighDue, busy]);
+  // premium follows the Google Play subscription: checked at start, set when a purchase completes
+  const latest = useRef(profile); latest.current = profile;
+  const setPremium = (on: boolean) => { if (on !== !!latest.current.premium) onProfile({ ...latest.current, premium: on }); };
+  useEffect(() => {
+    billing.entitled().then(on => { if (on !== null) setPremium(on); });
+    return billing.listen(on => { setPremium(on); if (on) g.notify(PREMIUM_ON); }, msg => g.notify({ title: 'PURCHASE', tone: 'gold', lines: [msg] }));
+  }, []);
   // phone reminders for the coming week, rebuilt whenever something changes
   const [asked, setAsked] = useState(false);
   useEffect(() => { askPermission().catch(() => {}).finally(() => setAsked(true)); }, []);
@@ -62,7 +70,7 @@ export function Main({ profile, history, setHistory, onRedGate, onProfile }: { p
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}>
             {tab === 'quest' ? <QuestTab g={g} profile={profile} history={history} open={open} onStatus={() => setTab('status')} onWeigh={() => setWeighOpen(true)} />
               : tab === 'status' ? <StatusTab profile={profile} history={history} fresh={fresh} />
-              : tab === 'premium' ? <PremiumWin g={g} profile={profile} />
+              : tab === 'premium' ? <PremiumWin g={g} profile={profile} onPremium={setPremium} />
               : <Settings g={g} profile={profile} onProfile={onProfile} />}
           </ScrollView>
           <TabBar tab={tab} setTab={setTab} badge={unseen.length ? 'status' : undefined} />
@@ -460,17 +468,39 @@ const PREMIUM_NOTICE = { title: 'PREMIUM', tone: 'gold' as Tone, lines: ['This g
 
 // What premium unlocks, and the trial state
 const FREE_PERKS = ['Daily quest and penalty zone', '3 gates a week on your days', 'Levels, grades and ranks up to ' + FREE_RANK_CAP];
-const PAID_PERKS: [string, string][] = [
+// [title, line, coming soon]: perks not built yet are shown as coming, never sold as present
+const PAID_PERKS: [string, string, boolean?][] = [
   ['The Red Gate', 'The hardest gate, new every week. Double XP.'],
   ['Ranks B, A and S', 'Keep climbing past rank ' + FREE_RANK_CAP + '.'],
-  ['A plan that adapts', 'Every gate adjusts to how your last ones went.'],
   ['Any equipment, any time', 'Switch between none, home kit and gym.'],
-  ['Monthly progress report', 'Strength, streaks and body, side by side.'],
+  ['A plan that adapts', 'Every gate adjusts to how your last ones went.', true],
+  ['Monthly progress report', 'Strength, streaks and body, side by side.', true],
 ];
-function PremiumWin({ g, profile }: { g: ReturnType<typeof useGame>; profile: Profile }) {
+const PREMIUM_ON = { title: 'PREMIUM', tone: 'gold' as Tone, lines: ['Premium is active.', 'The Red Gate and every rank up to S are open.'] };
+// shown when Play prices can't be loaded (web, or before the subscription exists in Play Console)
+const FALLBACK: Record<billing.PlanId, string> = { yearly: '$17.99', monthly: '$2.99' };
+
+function PremiumWin({ g, profile, onPremium }: { g: ReturnType<typeof useGame>; profile: Profile; onPremium: (on: boolean) => void }) {
   const t = useT(), today = new Date(), left = trialLeft(profile, today), on = !!profile.premium || left > 0;
-  const [plan, setPlan] = useState<'year' | 'month'>('year');
-  const plans: ['year' | 'month', string, string, string][] = [['year', 'Yearly', '$17.99', '$1.50 a month · save 50%'], ['month', 'Monthly', '$2.99', 'Cancel any time']];
+  const [plan, setPlan] = useState<billing.PlanId>('yearly');
+  const [offers, setOffers] = useState<billing.Plan[]>([]);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => { if (!profile.premium) billing.plans().then(setOffers); }, [profile.premium]);
+  const price = (k: billing.PlanId) => offers.find(o => o.id === k)?.price || FALLBACK[k];
+  const plans: [billing.PlanId, string, string][] = [['yearly', 'Yearly', 'Best for the full 12-week cycle'], ['monthly', 'Monthly', 'Cancel any time']];
+  const unlock = async () => {
+    const o = offers.find(x => x.id === plan);
+    if (!o) return g.notify({ title: 'PREMIUM', tone: 'gold', lines: ['The store is not reachable right now.', 'Check your connection and try again.'] });
+    setBusy(true);
+    try { await billing.buy(o); } catch (e) { g.notify({ title: 'PURCHASE', tone: 'gold', lines: [String((e as Error).message || e)] }); }
+    setBusy(false);
+  };
+  const restore = async () => {
+    const r = await billing.entitled();
+    if (r === null) return g.notify({ title: 'RESTORE', tone: 'gold', lines: ['The store is not reachable right now.'] });
+    onPremium(r);
+    g.notify(r ? PREMIUM_ON : { title: 'RESTORE', tone: 'gold', lines: ['No active subscription was found for this Google account.'] });
+  };
   return (
     <>
       <Appear>
@@ -484,13 +514,16 @@ function PremiumWin({ g, profile }: { g: ReturnType<typeof useGame>; profile: Pr
           <Divider />
           <Caps size={10} glow={false} style={{ color: t.gold }}>Premium unlocks</Caps>
           <View style={{ gap: 14 }}>
-            {PAID_PERKS.map(([title, sub]) => (
+            {PAID_PERKS.map(([title, sub, soon]) => (
               <Row key={title} style={{ gap: 12, alignItems: 'flex-start' }}>
                 <View style={{ width: 28, height: 28, borderWidth: 1, borderColor: 'rgba(255,201,77,0.55)', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,201,77,0.08)' }}>
-                  {on ? <Text style={{ color: t.gold, fontFamily: F.bold, fontSize: 13 }}>✓</Text> : <Lock color={t.gold} size={12} />}
+                  {on && !soon ? <Text style={{ color: t.gold, fontFamily: F.bold, fontSize: 13 }}>✓</Text> : <Lock color={t.gold} size={12} />}
                 </View>
                 <View style={{ flex: 1, gap: 1 }}>
-                  <T style={{ fontFamily: F.semi, fontSize: 15, color: t.bright }}>{title}</T>
+                  <Row style={{ gap: 8 }}>
+                    <T style={{ fontFamily: F.semi, fontSize: 15, color: t.bright }}>{title}</T>
+                    {soon ? <View style={{ borderWidth: 1, borderColor: 'rgba(255,201,77,0.55)', paddingHorizontal: 5, paddingVertical: 1 }}><Caps size={8} glow={false} style={{ color: t.gold }}>Soon</Caps></View> : null}
+                  </Row>
                   <T muted style={{ fontSize: 13, lineHeight: 18 }}>{sub}</T>
                 </View>
               </Row>
@@ -499,25 +532,33 @@ function PremiumWin({ g, profile }: { g: ReturnType<typeof useGame>; profile: Pr
         </Win>
       </Appear>
 
-      {profile.premium ? null : (
+      {profile.premium ? (
+        <Appear delay={80}>
+          <Btn label="Manage subscription" onPress={() => billing.manage()} />
+        </Appear>
+      ) : (
         <Appear delay={80}>
           <View style={{ gap: 10 }}>
             <Row style={{ gap: 10, alignItems: 'stretch' }}>
-              {plans.map(([k, name, price, sub]) => {
+              {plans.map(([k, name, sub]) => {
                 const sel = plan === k;
                 return (
                   <Pressable key={k} onPress={() => setPlan(k)} accessibilityRole="radio" accessibilityState={{ checked: sel }} accessibilityLabel={name}
                     style={{ flex: 1, padding: 14, gap: 4, alignItems: 'center', borderWidth: 1, borderColor: sel ? t.gold : t.line,
                       backgroundColor: sel ? 'rgba(255,201,77,0.1)' : 'rgba(4,10,24,0.7)', boxShadow: sel ? '0 0 14px rgba(255,201,77,0.35)' : undefined }}>
-                    {k === 'year' ? <View style={{ position: 'absolute', top: -9, backgroundColor: t.gold, paddingHorizontal: 6, paddingVertical: 1 }}><Caps size={8} glow={false} style={{ color: '#1a1200' }}>Best value</Caps></View> : null}
+                    {k === 'yearly' ? <View style={{ position: 'absolute', top: -9, backgroundColor: t.gold, paddingHorizontal: 6, paddingVertical: 1 }}><Caps size={8} glow={false} style={{ color: '#1a1200' }}>Best value</Caps></View> : null}
                     <Caps size={10} glow={false} style={{ color: sel ? t.gold : t.muted }}>{name}</Caps>
-                    <Num size={24} color={sel ? t.gold : t.fg}>{price}</Num>
+                    <Num size={22} color={sel ? t.gold : t.fg}>{price(k)}</Num>
                     <T muted style={{ fontSize: 11, textAlign: 'center' }}>{sub}</T>
                   </Pressable>
                 );
               })}
             </Row>
-            <Btn gold big label={left ? 'Keep premium' : 'Unlock premium'} onPress={() => g.notify({ title: 'PREMIUM', tone: 'gold', lines: ['Payments open with the Google Play release.', 'Until then, every feature stays visible here.'] })} />
+            <Btn gold big label={busy ? 'Opening Google Play…' : left ? 'Keep premium' : 'Unlock premium'} disabled={busy} onPress={unlock} />
+            <T muted style={{ fontSize: 11, textAlign: 'center', lineHeight: 16 }}>Billed through Google Play. Renews automatically until you cancel in Play Store › Subscriptions.</T>
+            <Pressable onPress={restore} accessibilityRole="button" style={{ alignSelf: 'center', padding: 6 }}>
+              <Caps size={10} glow={false} style={{ color: t.muted }}>Restore purchase</Caps>
+            </Pressable>
           </View>
         </Appear>
       )}

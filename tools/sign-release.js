@@ -10,10 +10,12 @@ s = s.replace(/signingConfigs \{/, `signingConfigs {
             keyAlias 'upload'
             keyPassword System.getenv('UPLOAD_KEYSTORE_PASSWORD')
         }`);
+// newer prebuild templates write `signingConfig = signingConfigs.debug`
 const rel = s.indexOf('release {', s.indexOf('buildTypes'));
-const end = s.indexOf('signingConfig signingConfigs.debug', rel);
-if (rel < 0 || end < 0) throw new Error('release build type not found in ' + f);
-s = s.slice(0, end) + 'signingConfig signingConfigs.release' + s.slice(end + 'signingConfig signingConfigs.debug'.length);
+const m = rel < 0 ? null : /signingConfig\s*=?\s*signingConfigs\.debug/.exec(s.slice(rel));
+if (!m) throw new Error('release build type not found in ' + f);
+const end = rel + m.index;
+s = s.slice(0, end) + 'signingConfig signingConfigs.release' + s.slice(end + m[0].length);
 // Play needs a higher versionCode on every upload: use the build number
 if (process.env.GITHUB_RUN_NUMBER) s = s.replace(/versionCode \d+/, 'versionCode ' + process.env.GITHUB_RUN_NUMBER);
 fs.writeFileSync(f, s);

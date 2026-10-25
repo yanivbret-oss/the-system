@@ -16,13 +16,17 @@ To work, the app saves the following **only on your device**, in the app's priva
 - Your settings: training days, equipment choice, reminder time, notification on/off
 - Your workout history, XP, rank, achievements and streaks
 - Body weight entries you type in at the weekly weigh-in
-- Your premium trial status
+- Your premium trial and subscription status
 
 None of this is sent to the developer or to any server. The app has no account, no login, no analytics, no advertising and no tracking SDKs.
 
 ## Notifications
 
 If you allow notifications, the app schedules reminders locally on your phone (for example a daily quest reminder). No push server is involved, and you can turn reminders off in the app's Settings or in your phone's settings.
+
+## Premium subscription
+
+Premium is sold through Google Play. Google handles the payment and your billing details; the developer never sees them. The app only asks Google Play, on your phone, whether this Google account has an active subscription. See Google's privacy policy for how Google processes payments.
 
 ## Links to other services
 
@@ -42,8 +46,8 @@ The app gives general fitness guidance and is not medical advice. Check with a d
 
 ## Changes
 
-If the app ever starts collecting data (for example cloud backup or subscriptions), this policy will be updated before that version is released, and the date above will change.
+If the app ever starts collecting data (for example cloud backup), this policy will be updated before that version is released, and the date above will change.
 
 ## Contact
 
-Questions about this policy: yanivbret@googlemail.com
+Questions about this policy: thesystem.app.support@gmail.com

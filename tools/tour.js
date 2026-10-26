@@ -61,7 +61,7 @@ const scenarios = [
   const only = process.env.ONLY;
   for (const sc of scenarios) {
     if (only && !sc.name.includes(only)) continue;
-    const ctx = await b.newContext({ viewport: { width: 390, height: sc.height || 844 }, deviceScaleFactor: 2 });
+    const ctx = await b.newContext({ viewport: { width: 390, height: sc.height || 844 }, deviceScaleFactor: Number(process.env.DPR || 2) });
     const p = await ctx.newPage();
     const errs = []; p.on('pageerror', e => errs.push(e.message));
     // demo loops: serve local copies (DEMO_DIR holds <move>.webm, which headless Chromium can play)

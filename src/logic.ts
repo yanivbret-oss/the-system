@@ -85,9 +85,11 @@ export function streak(h: Rec[], today: Date) {
 }
 // On a training day the workout itself is the daily quest: one thing per day
 export const QUEST_KEYS = ['Q', 'A', 'B', 'C', 'D'];
+// The day the player signs up is a free day: its quest is optional and missing it brings no penalty
+export const isFirstDay = (p: Profile, d: Date) => daysBetween(parseYmd(p.startDate), d) <= 0;
 export function penaltyActive(h: Rec[], p: Profile, today: Date) {
   const yest = startOfDay(today); yest.setDate(yest.getDate() - 1);
-  return yest >= parseYmd(p.startDate) && !onDay(h, yest, QUEST_KEYS) && !onDay(h, today, ['P']);
+  return !isFirstDay(p, yest) && !onDay(h, yest, QUEST_KEYS) && !onDay(h, today, ['P']);
 }
 
 function dayHash(d: Date) { const x = d.getFullYear() * 400 + d.getMonth() * 32 + d.getDate(); return (Math.imul(x, 2654435761) >>> 0) % 1000; }

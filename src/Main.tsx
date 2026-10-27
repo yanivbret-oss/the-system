@@ -489,9 +489,12 @@ function PremiumWin({ g, profile, onPremium }: { g: ReturnType<typeof useGame>; 
   const price = (k: billing.PlanId) => offers.find(o => o.id === k)?.price || FALLBACK[k];
   const plans: [billing.PlanId, string, string][] = [['yearly', 'Yearly', 'Best for the full 12-week cycle'], ['monthly', 'Monthly', 'Cancel any time']];
   const unlock = async () => {
-    const o = offers.find(x => x.id === plan);
-    if (!o) return g.notify({ title: 'PREMIUM', tone: 'gold', lines: ['The store is not reachable right now.', 'Check your connection and try again.'] });
     setBusy(true);
+    // the first load can miss (Play still connecting): ask again before giving up
+    let list = offers;
+    if (!list.some(x => x.id === plan)) { list = await billing.plans(); setOffers(list); }
+    const o = list.find(x => x.id === plan);
+    if (!o) { setBusy(false); return g.notify({ title: 'PREMIUM', tone: 'gold', lines: ['The store is not reachable right now.', 'Check your connection and try again.'] }); }
     try { await billing.buy(o); } catch (e) { g.notify({ title: 'PURCHASE', tone: 'gold', lines: [String((e as Error).message || e)] }); }
     setBusy(false);
   };

@@ -99,6 +99,12 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
     return () => clearInterval(id);
   }, []);
 
+  // A quest started before midnight and finished after it counts for the day it started,
+  // so finishing late never leaves that day looking missed (and never opens a penalty)
+  const countedAt = (cur: Session, t: number) => {
+    const end = new Date(cur.day); end.setDate(end.getDate() + 1);
+    return Math.min(t, end.getTime() - 1);
+  };
   async function addRec(rec: Rec) {
     const before = player(history);
     const h = await store.addRec(rec);
@@ -161,7 +167,7 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
       const cur = s!;
       const rec: Rec = {
         key: cur.key, workout: W!.name, week: cur.week, date: ymd(new Date(cur.startedAt!)),
-        createdAt: cur.endedAt!, totalSec: Math.round((cur.endedAt! - cur.startedAt!) / 1000),
+        createdAt: countedAt(cur, cur.endedAt!), totalSec: Math.round((cur.endedAt! - cur.startedAt!) / 1000),
         exercises: W!.items.map(i => ({ name: i.name, rx: rxFor(i, cur.week), sec: Math.round(itemSec(cur.items[i.id])), done: !!cur.items[i.id]?.done })),
         score: actions.autoScore(), feel: cur.feel || null, hard: hard.trim(),
       };
@@ -173,7 +179,7 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
     saveQuest: async () => {
       const cur = s!, Qd = QUESTS[cur.key as 'Q' | 'P'];
       const goals = cur.key === 'Q' ? QUESTS.Q.goals(cur.week) : QUESTS.P.goals(gear);
-      const rec: Rec = { key: cur.key, workout: Qd.title, week: cur.week, date: ymd(new Date()), createdAt: Date.now(), totalSec: 0,
+      const rec: Rec = { key: cur.key, workout: Qd.title, week: cur.week, date: cur.day ? ymd(new Date(cur.day)) : ymd(new Date()), createdAt: countedAt(cur, Date.now()), totalSec: 0,
         exercises: goals.map(g => ({ name: g.label, rx: String(g.target), done: true })), score: '', feel: null, hard: '' };
       const { before, after } = await addRec(rec);
       update({ ...cur, saved: true });

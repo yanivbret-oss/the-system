@@ -27,9 +27,9 @@ export const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Fr
 export const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const WARMUP: Item = {
-  id: 'warm', name: 'Warm-up', tag: '8 min', rx: ['5 min incline walk + 2 rounds'],
+  id: 'warm', name: 'Warm-up', tag: '8 min', rx: ['5 min incline walk, then 2 quick rounds of:'],
   steps: ['10 light goblet squats', '10 band pull-aparts', '5 inchworms'],
-  alt: { none: { rx: ['5 min brisk walk or march + 2 rounds'], steps: ['10 bodyweight squats', '10 arm circles each way', '5 inchworms'], how: ['deepsquat', 'inchworm'] } },
+  alt: { none: { rx: ['5 min brisk walk or march, then 2 quick rounds of:'], steps: ['10 bodyweight squats', '10 arm circles each way', '5 inchworms'], how: ['deepsquat', 'inchworm'] } },
 };
 
 export const WORKOUTS: Record<WorkoutKey, Workout> = {

@@ -515,7 +515,7 @@ function PremiumWin({ g, profile, onPremium }: { g: ReturnType<typeof useGame>; 
             </Caps>
           </View>
           <Divider />
-          <Caps size={10} glow={false} style={{ color: t.gold }}>Premium unlocks</Caps>
+          <Caps size={10} glow={false} style={{ color: t.gold }}>{profile.premium ? 'Your premium perks' : 'Premium unlocks'}</Caps>
           <View style={{ gap: 14 }}>
             {PAID_PERKS.map(([title, sub, soon]) => (
               <Row key={title} style={{ gap: 12, alignItems: 'flex-start' }}>
@@ -566,6 +566,7 @@ function PremiumWin({ g, profile, onPremium }: { g: ReturnType<typeof useGame>; 
         </Appear>
       )}
 
+      {profile.premium ? null : (
       <Appear delay={140}>
         <Win title="FREE PLAN" icon="i">
           <View style={{ gap: 8 }}>
@@ -578,6 +579,7 @@ function PremiumWin({ g, profile, onPremium }: { g: ReturnType<typeof useGame>; 
           </View>
         </Win>
       </Appear>
+      )}
     </>
   );
 }

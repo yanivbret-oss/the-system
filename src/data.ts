@@ -276,6 +276,7 @@ export const DEMOS: Record<string, number> = {
   highknees: require('../assets/demos/highknees.mp4'),
   inchworm: require('../assets/demos/inchworm.mp4'),
   intervals: require('../assets/demos/intervals.mp4'),
+  jumpingjack: require('../assets/demos/jumpingjack.mp4'),
   jumpsquat: require('../assets/demos/jumpsquat.mp4'),
   negative: require('../assets/demos/negative.mp4'),
   pike: require('../assets/demos/pike.mp4'),

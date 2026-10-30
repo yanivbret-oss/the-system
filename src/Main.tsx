@@ -3,7 +3,8 @@ import { View, Text, TextInput, Pressable, ScrollView } from 'react-native';
 import Svg, { Polyline, Rect, Path, Circle } from 'react-native-svg';
 import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Ring, Meter, GoalHeading, useT, Tone } from './ui';
 import { F } from './theme';
-import { WORKOUTS, QUESTS, XP, DAYS, DAY_LETTERS, KEY_NAMES, GEAR, Gear } from './data';
+import { WORKOUTS, QUESTS, XP, DAYS, DAY_LETTERS, KEY_NAMES, GEAR, Gear, fitLevel } from './data';
+import { FitForm } from './Onboarding';
 import {
   Profile, Rec, player, streak, onDay, penaltyActive, secretFor, weekStart, weights, ACH, fmt, rxFor, QUEST_KEYS, startOfDay, parseYmd, todaysWorkout, isFirstDay, gatesFor, gateDay, gradeFor, isPremium, trialLeft, RANKS, FREE_RANK_CAP, DEFAULT_DAYS, TRIAL_DAYS, store,
 } from './logic';
@@ -68,7 +69,7 @@ export function Main({ profile, history, setHistory, onRedGate, onProfile }: { p
       {showQuest ? <QuestScreen g={g} onBack={() => setInQuest(false)} /> : (
         <>
           <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 32, gap: 16 }}>
-            {tab === 'quest' ? <QuestTab g={g} profile={profile} history={history} open={open} onStatus={() => setTab('status')} onWeigh={() => setWeighOpen(true)} />
+            {tab === 'quest' ? <QuestTab g={g} profile={profile} history={history} onProfile={onProfile} open={open} onStatus={() => setTab('status')} onWeigh={() => setWeighOpen(true)} />
               : tab === 'status' ? <StatusTab profile={profile} history={history} fresh={fresh} />
               : tab === 'premium' ? <PremiumWin g={g} profile={profile} onPremium={setPremium} />
               : <Settings g={g} profile={profile} onProfile={onProfile} />}
@@ -130,7 +131,7 @@ function TabIcon({ k, color, on }: { k: Tab; color: string; on: boolean }) {
 }
 
 // ---------- QUESTS: today's quest, the week strip, notifications, other gates
-function QuestTab({ g, profile, history, open, onStatus, onWeigh }: { g: ReturnType<typeof useGame>; profile: Profile; history: Rec[]; open: (k: string) => void; onStatus: () => void; onWeigh: () => void }) {
+function QuestTab({ g, profile, history, onProfile, open, onStatus, onWeigh }: { g: ReturnType<typeof useGame>; profile: Profile; history: Rec[]; onProfile: (p: Profile) => void; open: (k: string) => void; onStatus: () => void; onWeigh: () => void }) {
   const t = useT();
   const today = g.today, p = player(history);
   const todayW = g.todayW;
@@ -151,7 +152,7 @@ function QuestTab({ g, profile, history, open, onStatus, onWeigh }: { g: ReturnT
   const pad = (n: number) => String(n).padStart(2, '0');
   const goals: [string, string][] = todayW
     ? g.wk(todayW).items.filter(i => i.id !== 'warm').map(i => [i.name, rxFor(i, g.week)])
-    : QUESTS.Q.goals(g.week).map(x => [x.label, x.target + (x.unit || '')]);
+    : QUESTS.Q.goals(g.week, g.fit).map(x => [x.label, x.target + (x.unit || '')]);
 
   return (
     <>
@@ -161,6 +162,17 @@ function QuestTab({ g, profile, history, open, onStatus, onWeigh }: { g: ReturnT
       </View>
       <HomeStatus profile={profile} history={history} onPress={onStatus} />
       <WeekStrip history={history} profile={profile} today={today} />
+
+      {/* players from before the fitness test take it once, so their reps fit them too */}
+      {!profile.fit ? (
+        <Appear>
+          <Win hero title="FITNESS TEST">
+            <T glow style={{ textAlign: 'center', fontSize: 16 }}>How many can you do in a row?</T>
+            <T muted style={{ textAlign: 'center', fontSize: 13, lineHeight: 20 }}>The System now sets your reps to your level. Clean reps, no rest.</T>
+            <FitForm gear={g.gear} onDone={f => onProfile({ ...profile, fit: f })} />
+          </Win>
+        </Appear>
+      ) : null}
 
       {penalty ? (
         <>
@@ -589,6 +601,7 @@ function Settings({ g, profile, onProfile }: { g: ReturnType<typeof useGame>; pr
   const t = useT();
   const premium = isPremium(profile, new Date());
   const [days, setDays] = useState<number[]>(profile.days || DEFAULT_DAYS);
+  const [retest, setRetest] = useState(false);
   const gear: Gear = profile.gear || 'basic';
   const changed = days.join() !== (profile.days || DEFAULT_DAYS).join(), ok = days.length === 3 || days.length === 4;
   const flip = (d: number) => setDays(cur => cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d].sort((a, b) => a - b));
@@ -620,6 +633,16 @@ function Settings({ g, profile, onProfile }: { g: ReturnType<typeof useGame>; pr
             </Pressable>
           ))}
         </View>
+        <Divider />
+        <Row style={{ justifyContent: 'space-between' }}>
+          <Caps size={10} glow={false} style={{ color: t.muted }}>Fitness test</Caps>
+          {profile.fit && !retest ? <Btn small label="Retest" onPress={() => setRetest(true)} /> : null}
+        </Row>
+        {profile.fit && !retest ? (
+          <T muted style={{ fontSize: 13 }}>{profile.fit.push + ' push-ups' + (gear === 'none' ? '' : ' · ' + profile.fit.pull + ' pull-ups') + ' · ' + profile.fit.squat + ' squats · ' + fitLevel(profile.fit, gear) + ' reps'}</T>
+        ) : (
+          <FitForm gear={gear} init={profile.fit} label="Save" onDone={f => { onProfile({ ...profile, fit: f }); setRetest(false); }} />
+        )}
         <Divider />
         <Row style={{ justifyContent: 'space-between' }}>
           <Caps size={10} glow={false} style={{ color: t.muted }}>Notifications</Caps>

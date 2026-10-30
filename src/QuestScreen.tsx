@@ -190,7 +190,7 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
 function CounterQuest({ g }: { g: Game }) {
   const t = useT(), s = g.s!;
   const pen = s.key === 'P', Qd = QUESTS[s.key as 'Q' | 'P'];
-  const goals = pen ? QUESTS.P.goals(g.gear) : QUESTS.Q.goals(s.week);
+  const goals = pen ? QUESTS.P.goals(g.gear) : QUESTS.Q.goals(s.week, g.fit);
   const count = (id: string, timer?: boolean) => { const c = s.counts?.[id] || 0; return timer && s.plankSince ? c + Math.floor((Date.now() - s.plankSince) / 1000) : c; };
   const all = goals.every(x => count(x.id, x.timer) >= x.target);
   const [how, setHow] = useState<string | null>(null);

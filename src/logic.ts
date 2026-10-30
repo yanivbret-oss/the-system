@@ -1,12 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { XP, XP_PER_LEVEL, SECRETS, GEAR_SECRETS, WORKOUTS, ORDER, Item, Gear } from './data';
+import { XP, XP_PER_LEVEL, SECRETS, GEAR_SECRETS, WORKOUTS, ORDER, Item, Gear, Fit } from './data';
 
 export type Rec = {
   key: string; workout: string; week: number; date: string; createdAt: number; totalSec: number;
   exercises: { name: string; rx: string; sec?: number; done: boolean }[];
   score: string; feel: number | null; hard: string; kg?: number;
 };
-export type Profile = { name: string; startDate: string; rank: string; days?: number[]; gear?: Gear; premium?: boolean; trialSeen?: boolean; notify?: boolean; remindAt?: number };
+export type Profile = { name: string; startDate: string; rank: string; days?: number[]; gear?: Gear; fit?: Fit; premium?: boolean; trialSeen?: boolean; notify?: boolean; remindAt?: number };
 export type ItemState = { sec: number; runningSince?: number | null; done?: boolean; sets?: boolean[]; rounds?: number; lastBeepMin?: number; endBeeped?: boolean };
 export type Session = {
   v: 3; key: string; week: number; day: string; startedAt: number | null; endedAt: number | null;

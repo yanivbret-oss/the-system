@@ -11,10 +11,15 @@ export type Item = {
   emom?: boolean;
   finisher?: boolean;
   how?: string[];
+  // which fitness-test answer the reps depend on (mix: a circuit of several)
+  cat?: Cat;
   // replacements for players without the home kit (none) or with a full gym
   alt?: Partial<Record<Gear, Partial<Item>>>;
 };
 export type Gear = 'none' | 'basic' | 'gym';
+export type Cat = 'push' | 'pull' | 'legs' | 'mix';
+// Fitness test: the most reps the player can do in a row, asked at onboarding
+export type Fit = { push: number; pull: number; squat: number };
 export const GEAR: [Gear, string, string][] = [
   ['none', 'No equipment', 'Bodyweight only, anywhere'],
   ['basic', 'Home kit', 'Kettlebell, pull-up bar, TRX or bands'],
@@ -35,48 +40,48 @@ const WARMUP: Item = {
 export const WORKOUTS: Record<WorkoutKey, Workout> = {
   A: { name: 'Legs + Kettlebell', short: 'Legs', day: 1, alt: { none: { name: 'Legs + Bodyweight', short: 'Legs' }, gym: { name: 'Legs + Barbell', short: 'Legs' } }, items: [
     WARMUP,
-    { id: 'a1', name: 'Goblet squat, 3s lowering', rx: ['4 × 12', '5 × 12', '5 × 12, 45s rest', '3 × 10'], note: 'Rest 60s. Swap: squat holding 2 dumbbells',
+    { id: 'a1', cat: 'legs', name: 'Goblet squat, 3s lowering', rx: ['4 × 12', '5 × 12', '5 × 12, 45s rest', '3 × 10'], note: 'Rest 60s. Swap: squat holding 2 dumbbells',
       alt: { none: { name: 'Tempo squat, 3s lowering', rx: ['4 × 15', '5 × 15', '5 × 20', '3 × 12'], note: 'Rest 45s. Pause 1s at the bottom', how: ['deepsquat'] },
         gym: { name: 'Barbell back squat', rx: ['4 × 8', '5 × 8', '5 × 6, heavier', '3 × 8, light'], note: 'Rest 90s. Last rep should be hard but clean', how: ['backsquat'] } } },
-    { id: 'a2', name: 'Bulgarian split squat', rx: ['3 × 10 each leg', '4 × 10 each leg', '4 × 12 each leg', '2 × 10 each leg'], note: 'Rest 60s. Swap: reverse lunges',
+    { id: 'a2', cat: 'legs', name: 'Bulgarian split squat', rx: ['3 × 10 each leg', '4 × 10 each leg', '4 × 12 each leg', '2 × 10 each leg'], note: 'Rest 60s. Swap: reverse lunges',
       alt: { none: { note: 'Rear foot on a chair or couch. Rest 60s' } } },
-    { id: 'a3', name: 'Single-leg Romanian deadlift', rx: ['3 × 10 each leg', '3 × 12 each leg', '4 × 12 each leg', '2 × 10 each leg'], note: 'Swap: single-leg glute bridge',
+    { id: 'a3', cat: 'legs', name: 'Single-leg Romanian deadlift', rx: ['3 × 10 each leg', '3 × 12 each leg', '4 × 12 each leg', '2 × 10 each leg'], note: 'Swap: single-leg glute bridge',
       alt: { none: { name: 'Single-leg Romanian deadlift, bodyweight', note: 'Slow and controlled. Swap: single-leg glute bridge' },
         gym: { name: 'Barbell Romanian deadlift', rx: ['3 × 10', '4 × 10', '4 × 8, heavier', '2 × 10, light'], note: 'Rest 90s', how: ['rdl'] } } },
-    { id: 'a4', name: 'Kettlebell swing EMOM', rx: ['10 min, 15 every minute', '10 min, 17 every minute', '10 min, 20 every minute', '6 min, 15 every minute'], countdown: [600, 600, 600, 360], emom: true,
+    { id: 'a4', cat: 'legs', name: 'Kettlebell swing EMOM', rx: ['10 min, 15 every minute', '10 min, 17 every minute', '10 min, 20 every minute', '6 min, 15 every minute'], countdown: [600, 600, 600, 360], emom: true,
       alt: { none: { name: 'Jump squat EMOM', rx: ['10 min, 10 every minute', '10 min, 12 every minute', '10 min, 15 every minute', '6 min, 10 every minute'], how: ['jumpsquat'] } } },
-    { id: 'a5', name: 'Finisher: 3 rounds for time', rx: ['Each round: 200 m run, 15 goblet squats, 10 burpees'], note: 'Timed automatically', finisher: true,
+    { id: 'a5', cat: 'mix', name: 'Finisher: 3 rounds for time', rx: ['Each round: 200 m run, 15 goblet squats, 10 burpees'], note: 'Timed automatically', finisher: true,
       alt: { none: { rx: ['Each round: 1 min high knees, 20 squats, 10 burpees'], how: ['highknees', 'deepsquat', 'burpee'] } } },
   ]},
   B: { name: 'Upper Body + Pull-ups', short: 'Upper', day: 3, alt: { none: { name: 'Upper Body + Push', short: 'Upper' } }, items: [
     WARMUP,
-    { id: 'b1', name: 'Pull-up EMOM', rx: ['8 min, 2 every minute', '8 min, 2 and 3 on alternate minutes', '8 min, 3 every minute', '6 min, 2 every minute'], countdown: [480, 480, 480, 360], emom: true, note: 'Swap: band-assisted pull-ups',
-      alt: { none: { name: 'Push-up EMOM', rx: ['8 min, 6 every minute', '8 min, 8 every minute', '8 min, 10 every minute', '6 min, 6 every minute'], note: 'Knees down is fine for the last minutes', how: ['pushup'] },
+    { id: 'b1', cat: 'pull', name: 'Pull-up EMOM', rx: ['8 min, 2 every minute', '8 min, 2 and 3 on alternate minutes', '8 min, 3 every minute', '6 min, 2 every minute'], countdown: [480, 480, 480, 360], emom: true, note: 'Swap: band-assisted pull-ups',
+      alt: { none: { cat: 'push', name: 'Push-up EMOM', rx: ['8 min, 6 every minute', '8 min, 8 every minute', '8 min, 10 every minute', '6 min, 6 every minute'], note: 'Knees down is fine for the last minutes', how: ['pushup'] },
         gym: { note: 'Swap: assisted pull-up machine' } } },
-    { id: 'b2', name: 'Negative pull-ups (5s down)', rx: ['3 × 3', '3 × 4', '4 × 4', '2 × 3'], note: 'Rest 90s',
-      alt: { none: { name: 'Pike push-ups', rx: ['3 × 6', '3 × 8', '4 × 8', '2 × 6'], note: 'Rest 60s. Hips high, head toward the floor', how: ['pike'] } } },
+    { id: 'b2', cat: 'pull', name: 'Negative pull-ups (5s down)', rx: ['3 × 3', '3 × 4', '4 × 4', '2 × 3'], note: 'Rest 90s',
+      alt: { none: { cat: 'push', name: 'Pike push-ups', rx: ['3 × 6', '3 × 8', '4 × 8', '2 × 6'], note: 'Rest 60s. Hips high, head toward the floor', how: ['pike'] } } },
     { id: 'b3', name: 'TRX row', rx: ['4 × 12', '4 × 14', '5 × 12, feet further forward', '3 × 10'], note: 'Rest 60s',
       alt: { none: { name: 'Table row', note: 'Lie under a sturdy table and pull your chest to the edge. Rest 60s', how: ['tablerow'] },
         gym: { name: 'Seated cable row', rx: ['4 × 12', '4 × 12, heavier', '5 × 10', '3 × 10, light'], how: ['cablerow'] } } },
-    { id: 'b4', name: 'Push-ups', rx: ['4 × (your max − 2)', '4 × (your max − 2)', '5 × (your max − 2)', '3 × 10'], note: 'Swap: TRX push-ups',
+    { id: 'b4', cat: 'push', name: 'Push-ups', rx: ['4 × (your max − 2)', '4 × (your max − 2)', '5 × (your max − 2)', '3 × 10'], note: 'Swap: TRX push-ups',
       alt: { none: { name: 'Chair dips', rx: ['4 × 10', '4 × 12', '5 × 12', '3 × 8'], note: 'Hands on a sturdy chair behind you. Rest 60s', how: ['dips'] } } },
     { id: 'b5', name: 'Half-kneeling single-arm press', rx: ['3 × 10 each arm', '3 × 12 each arm', '4 × 12 each arm', '2 × 10 each arm'], note: 'Swap: band press',
       alt: { none: { name: 'Superman hold', rx: ['3 × 30s', '3 × 40s', '4 × 40s', '2 × 30s'], note: 'Lift arms and legs, squeeze your back', how: ['superman'] },
         gym: { name: 'Seated dumbbell shoulder press', rx: ['3 × 10', '3 × 12', '4 × 10, heavier', '2 × 10'], note: 'Rest 60s', how: ['dbpress'] } } },
-    { id: 'b6', name: 'Finisher: 8 min AMRAP', rx: ['5 pull-ups (band ok), 10 push-ups, 15 swings'], countdown: [480, 480, 480, 360], note: 'Tap "Round done" after each round', finisher: true,
+    { id: 'b6', cat: 'mix', name: 'Finisher: 8 min AMRAP', rx: ['5 pull-ups (band ok), 10 push-ups, 15 swings'], countdown: [480, 480, 480, 360], note: 'Tap "Round done" after each round', finisher: true,
       alt: { none: { rx: ['5 pike push-ups, 10 table rows, 15 jump squats'], how: ['pike', 'tablerow', 'jumpsquat'] } } },
   ]},
   C: { name: 'Run + Rounds', short: 'Run', day: 5, items: [
     WARMUP,
     { id: 'c1', name: 'Treadmill intervals', rx: ['6 × (1 min fast / 1 min walk)', '8 × (1 min fast / 1 min walk)', '10 × (1 min fast / 1 min walk)', '5 × (1 min fast / 1 min walk)'], countdown: [720, 960, 1200, 600], emom: true, note: 'Fast = hard, you can only say a few words. Note your speed and add 0.5 km/h next week',
       alt: { none: { name: 'Run intervals, outdoors', note: 'Fast = hard, you can only say a few words. No space to run? High knees in place' } } },
-    { id: 'c2', name: 'Finisher: 12 min AMRAP', rx: ['10 swings, 10 TRX rows, 10 thrusters, 200 m run'], countdown: [720, 720, 720, 480], note: 'Tap "Round done" after each round', finisher: true,
+    { id: 'c2', cat: 'mix', name: 'Finisher: 12 min AMRAP', rx: ['10 swings, 10 TRX rows, 10 thrusters, 200 m run'], countdown: [720, 720, 720, 480], note: 'Tap "Round done" after each round', finisher: true,
       alt: { none: { rx: ['10 jump squats, 10 table rows, 10 burpees, 200 m run'], how: ['jumpsquat', 'tablerow', 'burpee'] },
         gym: { rx: ['10 swings, 10 cable rows, 10 thrusters, 200 m run'], how: ['swing', 'cablerow', 'thruster'] } } },
   ]},
   D: { name: 'Red Gate', short: 'Red Gate', day: 6, items: [
     WARMUP,
-    { id: 'd1', name: 'Chipper for time, 30 min cap', rx: ['In order: 50 swings, 40 goblet squats, 30 push-ups, 20 TRX rows, 10 burpees, 800 m run'], note: 'Timed automatically', finisher: true,
+    { id: 'd1', cat: 'mix', name: 'Chipper for time, 30 min cap', rx: ['In order: 50 swings, 40 goblet squats, 30 push-ups, 20 TRX rows, 10 burpees, 800 m run'], note: 'Timed automatically', finisher: true,
       alt: { none: { rx: ['In order: 50 jump squats, 40 squats, 30 push-ups, 20 table rows, 10 burpees, 800 m run'], how: ['jumpsquat', 'deepsquat', 'pushup', 'tablerow', 'burpee'] },
         gym: { rx: ['In order: 50 swings, 40 goblet squats, 30 push-ups, 20 cable rows, 10 burpees, 800 m run'], how: ['swing', 'goblet', 'pushup', 'cablerow', 'burpee'] } } },
   ]},
@@ -84,11 +89,46 @@ export const WORKOUTS: Record<WorkoutKey, Workout> = {
 export const ORDER: WorkoutKey[] = ['A', 'B', 'C', 'D'];
 
 // A workout as this player sees it: the home-kit version with the swaps for their equipment applied
-export function workoutFor(k: WorkoutKey, gear: Gear = 'basic'): Workout {
+export function workoutFor(k: WorkoutKey, gear: Gear = 'basic', fit?: Fit): Workout {
   const w = WORKOUTS[k];
-  if (gear === 'basic') return w;
-  return { ...w, ...(w.alt?.[gear] || {}), items: w.items.map(it => ({ ...it, ...(it.alt?.[gear] || {}) })) };
+  const g = gear === 'basic' ? w : { ...w, ...(w.alt?.[gear] || {}), items: w.items.map(it => ({ ...it, ...(it.alt?.[gear] || {}) })) };
+  return fit ? { ...g, items: g.items.map(it => scaleItem(it, gear, fit)) } : g;
 }
+
+// ---- difficulty from the fitness test
+// Below these, the plan's reps are too many for that movement: they are cut to about 60%
+const LOW = { push: 12, pull: 5, squat: 25 };
+const catFactor = (c: Cat | undefined, f: Fit, gear: Gear) => {
+  const low = { push: f.push < LOW.push, pull: gear !== 'none' && f.pull < LOW.pull, legs: f.squat < LOW.squat };
+  if (!c) return 1;
+  if (c === 'mix') return low.push || low.pull || low.legs ? 0.7 : 1;
+  return low[c] ? 0.6 : 1;
+};
+// Scale the rep counts in a prescription, never set counts ("4 ×"), distances, times or "max − 2"
+export function scaleRx(rx: string, f: number) {
+  if (f >= 1) return rx;
+  return rx.replace(/\d+/g, (n, i: number) => {
+    const after = rx.slice(i + n.length), before = rx.slice(0, i);
+    if (/^\s*(×|m\b|min\b|s\b|km|\))/.test(after) || /[−-]\s*$/.test(before)) return n;
+    return String(Math.max(1, Math.round(+n * f)));
+  });
+}
+function scaleItem(it: Item, gear: Gear, fit: Fit): Item {
+  const f = catFactor(it.cat, fit, gear);
+  if (f >= 1) return it;
+  const out: Item = { ...it, rx: it.rx.map(r => scaleRx(r, f)) };
+  // no strict pull-up yet: the pull-up work is assisted
+  if (it.cat === 'pull' && gear !== 'none' && fit.pull < 2 && it.id === 'b1') {
+    out.name = gear === 'gym' ? 'Assisted pull-up EMOM' : 'Band-assisted pull-up EMOM';
+    out.note = gear === 'gym' ? 'Use the assisted pull-up machine' : 'Loop a band under your feet or knee. Jumping negatives are fine too';
+  }
+  if (it.cat === 'push' && fit.push < 5) out.note = (it.note ? it.note + '. ' : '') + 'Knees down is fine';
+  return out;
+}
+export const fitLevel = (f: Fit, gear: Gear) => {
+  const n = [f.push < LOW.push, gear !== 'none' && f.pull < LOW.pull, f.squat < LOW.squat].filter(Boolean).length;
+  return n === 0 ? 'Standard' : n === 3 ? 'Beginner' : 'Adjusted';
+};
 export const KEY_NAMES: Record<string, string> = { Q: 'Daily Quest', P: 'Penalty Quest', W: 'Weigh-in', S: 'Secret Quest', X: 'Weigh-in missed' };
 
 // Counter-style quests: the daily quest on rest days, and the penalty quest
@@ -98,9 +138,9 @@ export const QUESTS = {
     title: 'Preparation to Become Strong',
     lead: 'A rest day, so the full quest. Split it up across the day if you like.',
     warn: 'Failing to complete the daily quest by midnight will result in a penalty.',
-    goals: (w: number): Goal[] => [
-      { id: 'push', label: 'Push-ups', target: [20, 25, 30, 20][w - 1], steps: [1, 5, 10], how: 'q2' },
-      { id: 'squat', label: 'Squats', target: [30, 40, 50, 30][w - 1], steps: [1, 5, 10], how: 'q3' },
+    goals: (w: number, fit?: Fit): Goal[] => [
+      { id: 'push', label: 'Push-ups', target: Math.round([20, 25, 30, 20][w - 1] * (fit ? catFactor('push', fit, 'basic') : 1)), steps: [1, 5, 10], how: 'q2' },
+      { id: 'squat', label: 'Squats', target: Math.round([30, 40, 50, 30][w - 1] * (fit ? catFactor('legs', fit, 'basic') : 1)), steps: [1, 5, 10], how: 'q3' },
       { id: 'plank', label: 'Plank', unit: 's', target: [45, 60, 75, 45][w - 1], timer: true, how: 'q4' },
     ],
   },

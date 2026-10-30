@@ -25,7 +25,8 @@ const check = (ok, what) => { console.log((ok ? 'PASS ' : 'FAIL ') + what); if (
   // Day 1, Sunday: onboarding
   await p.goto(base); await p.waitForTimeout(1500);
   await click('Yes'); await click('Understood'); await p.locator('input').fill('Tester'); await click('Next'); await click('Next');
-  await p.getByLabel('Home kit').click(); await click('Confirm'); await p.waitForTimeout(800);
+  await p.getByLabel('Home kit').click(); await click('Next'); await p.waitForTimeout(500);
+  await p.getByLabel('Push-ups in a row').fill('30'); await p.getByLabel('Pull-ups in a row').fill('10'); await p.getByLabel('Squats in a row').fill('50'); await click('Confirm'); await p.waitForTimeout(800);
   check(await has('Preparation to Become Strong'), 'onboarding lands on home with the daily quest');
   check(await has('300 XP to level 2'), 'starts at level 1 with 0 XP');
   // weigh-in pops up on its own

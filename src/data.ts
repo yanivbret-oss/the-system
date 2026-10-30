@@ -25,7 +25,15 @@ export type Kit = 'kb' | 'db' | 'bar' | 'trx' | 'bands' | 'tread';
 export const KIT: [Kit, string][] = [['kb', 'Kettlebell'], ['db', 'Dumbbells'], ['bar', 'Pull-up bar'], ['trx', 'TRX'], ['bands', 'Bands'], ['tread', 'Treadmill']];
 // what the home plan was written for; players from before the kit choice keep it
 export const FULL_KIT: Kit[] = ['kb', 'bar', 'trx', 'bands', 'tread'];
-export type Setup = { kit?: Kit[]; noRun?: boolean };
+// Stat points: one per cleared Red Gate, spent on next week's focus
+export type Focus = 'upper' | 'legs' | 'end';
+export const FOCUS: [Focus, string, string, string][] = [
+  ['upper', 'Upper body', 'STR', '+1 set on every upper-body strength exercise'],
+  ['legs', 'Legs', 'AGI', '+1 set on every leg strength exercise'],
+  ['end', 'Endurance', 'VIT', '+2 intervals on the run day'],
+];
+export const FOCUS_BONUS = 3; // stat points added to the chosen stat
+export type Setup = { kit?: Kit[]; noRun?: boolean; focus?: Focus };
 // Fitness test: the most reps the player can do in a row, asked at onboarding
 export type Fit = { push: number; pull: number; squat: number };
 export const GEAR: [Gear, string, string][] = [
@@ -110,6 +118,7 @@ export function workoutFor(k: WorkoutKey, gear: Gear = 'basic', fit?: Fit, setup
     g = { ...g, items: g.items.map(noRunItem) };
     if (k === 'C') g = { ...g, name: 'Intervals + Rounds' };
   }
+  if (setup.focus) g = { ...g, items: g.items.map(it => focusItem(it, setup.focus!)) };
   return fit ? { ...g, items: g.items.map(it => scaleItem(it, gear, fit)) } : g;
 }
 
@@ -142,6 +151,14 @@ function kitItem(it: Item, kit: Kit[]): Item {
   else if (it.id === 'a4' && !kit.includes('kb')) it = { ...it, name: 'Dumbbell swing EMOM', note: 'One dumbbell held by the end, same hip snap as a kettlebell swing' };
   return swapWords(it, kitSwaps(kit));
 }
+// The week's focus, bought with a stat point: more volume where the player chose
+const FOCUS_ITEMS: Record<Focus, string[]> = { upper: ['b2', 'b3', 'b4', 'b5'], legs: ['a1', 'a2', 'a3'], end: ['c1'] };
+function focusItem(it: Item, f: Focus): Item {
+  if (!FOCUS_ITEMS[f].includes(it.id)) return it;
+  if (it.id === 'c1') return { ...it, rx: it.rx.map(r => r.replace(/^(\d+) ×/, (_, n) => (+n + 2) + ' ×')), countdown: it.countdown?.map(c => c + 240), note: (it.note ? it.note + '. ' : '') + 'Focus: +2 intervals' };
+  return { ...it, rx: it.rx.map(r => r.replace(/^(\d+) ×/, (_, n) => (+n + 1) + ' ×')), note: (it.note ? it.note + '. ' : '') + 'Focus: +1 set' };
+}
+
 // No running: jumping jacks take the run's place
 function noRunItem(it: Item): Item {
   if (it.id === 'c1') return { ...it, name: 'Jumping jack intervals', rx: it.rx.map(r => r.replace('1 min walk', '1 min easy march')), note: 'Fast = hard, you can only say a few words. Keep a steady rhythm', how: ['jumpingjack'] };

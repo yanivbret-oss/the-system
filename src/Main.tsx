@@ -3,14 +3,15 @@ import { View, Text, TextInput, Pressable, ScrollView } from 'react-native';
 import Svg, { Polyline, Rect, Path, Circle } from 'react-native-svg';
 import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Ring, Meter, GoalHeading, useT, Tone } from './ui';
 import { F } from './theme';
-import { WORKOUTS, QUESTS, XP, DAYS, DAY_LETTERS, KEY_NAMES, GEAR, Gear, fitLevel, FULL_KIT } from './data';
+import { WORKOUTS, QUESTS, XP, DAYS, DAY_LETTERS, KEY_NAMES, GEAR, Gear, fitLevel, FULL_KIT, FOCUS, FOCUS_BONUS, Focus } from './data';
 import { FitForm, KitPicker } from './Onboarding';
 import {
-  Profile, Rec, player, streak, onDay, penaltyActive, secretFor, weekStart, weights, ACH, fmt, rxFor, QUEST_KEYS, startOfDay, parseYmd, todaysWorkout, isFirstDay, gatesFor, gateDay, gradeFor, isPremium, trialLeft, RANKS, FREE_RANK_CAP, DEFAULT_DAYS, TRIAL_DAYS, store,
+  Profile, Rec, player, statPoints, focusFor, nextFocusWeek, ymd, streak, onDay, penaltyActive, secretFor, weekStart, weights, ACH, fmt, rxFor, QUEST_KEYS, startOfDay, parseYmd, todaysWorkout, isFirstDay, gatesFor, gateDay, gradeFor, isPremium, trialLeft, RANKS, FREE_RANK_CAP, DEFAULT_DAYS, TRIAL_DAYS, store,
 } from './logic';
 import { useGame } from './game';
 import { QuestScreen } from './QuestScreen';
 import { askPermission, scheduleAll, REMIND_HOURS, DEFAULT_REMIND } from './notify';
+import { beep } from './sound';
 import * as billing from './billing';
 
 type Tab = 'quest' | 'status' | 'premium' | 'settings';
@@ -133,7 +134,7 @@ function TabIcon({ k, color, on }: { k: Tab; color: string; on: boolean }) {
 // ---------- QUESTS: today's quest, the week strip, notifications, other gates
 function QuestTab({ g, profile, history, onProfile, open, onStatus, onWeigh }: { g: ReturnType<typeof useGame>; profile: Profile; history: Rec[]; onProfile: (p: Profile) => void; open: (k: string) => void; onStatus: () => void; onWeigh: () => void }) {
   const t = useT();
-  const today = g.today, p = player(history);
+  const today = g.today, p = player(history, profile.focus);
   const todayW = g.todayW;
   const qKey = todayW || 'Q';
   const qDone = onDay(history, today, QUEST_KEYS);
@@ -162,6 +163,11 @@ function QuestTab({ g, profile, history, onProfile, open, onStatus, onWeigh }: {
       </View>
       <HomeStatus profile={profile} history={history} onPress={onStatus} />
       <WeekStrip history={history} profile={profile} today={today} />
+
+      {statPoints(history, profile) > 0 ? <StatPointCard profile={profile} history={history} onProfile={onProfile} /> : null}
+      {focusFor(profile, today) ? (
+        <Caps size={10} glow={false} style={{ color: t.gold, textAlign: 'center' }}>{"This week's focus: " + FOCUS.find(f => f[0] === focusFor(profile, today))![1] + ' · ' + FOCUS.find(f => f[0] === focusFor(profile, today))![3]}</Caps>
+      ) : null}
 
       {/* players from before the fitness test take it once, so their reps fit them too */}
       {!profile.fit ? (
@@ -285,7 +291,7 @@ function QuestTab({ g, profile, history, onProfile, open, onStatus, onWeigh }: {
 
 // The player's window at the top of the home screen, kept short; the full window lives in the Status tab
 function HomeStatus({ profile, history, onPress }: { profile: Profile; history: Rec[]; onPress: () => void }) {
-  const t = useT(), p = player(history);
+  const t = useT(), p = player(history, profile.focus);
   return (
     <Appear>
       <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Open status">
@@ -379,11 +385,11 @@ function WeighQuest({ last, onSave, onLater }: { last?: number; onSave: (kg: num
 // ---------- STATUS: the player's window, stats, weight, achievements
 function StatusTab({ profile, history, fresh }: { profile: Profile; history: Rec[]; fresh: string[] }) {
   const t = useT();
-  const p = player(history), today = new Date();
+  const p = player(history, profile.focus), today = new Date();
   const premium = isPremium(profile, today);
   const ws = weights(history);
   const got = ACH.filter(a => a[3](history, today)).map(a => a[0]);
-  const p0 = player(history.filter(x => x.createdAt < today.getTime() - 7 * 864e5));
+  const p0 = player(history.filter(x => x.createdAt < today.getTime() - 7 * 864e5), (profile.focus || []).filter(f => parseYmd(f.week).getTime() < today.getTime() - 7 * 864e5));
   const weekDone = Array.from({ length: 7 }, (_, i) => { const d = new Date(weekStart(today)); d.setDate(d.getDate() + i); return onDay(history, d, QUEST_KEYS) ? 1 : 0; }).reduce((a: number, b) => a + b, 0);
   return (
     <>
@@ -476,7 +482,7 @@ function StatusTab({ profile, history, fresh }: { profile: Profile; history: Rec
   );
 }
 
-const PREMIUM_NOTICE = { title: 'PREMIUM', tone: 'gold' as Tone, lines: ['This gate is sealed for free players.', 'Premium unlocks the Red Gate, ranks up to S and a plan that adapts to you every week.', 'Open the Premium tab to see the plan.'] };
+const PREMIUM_NOTICE = { title: 'PREMIUM', tone: 'gold' as Tone, lines: ['This gate is sealed for free players.', 'Premium unlocks the Red Gate, ranks up to S and stat points to shape your week.', 'Open the Premium tab to see the plan.'] };
 
 // What premium unlocks, and the trial state
 const FREE_PERKS = ['Daily quest and penalty zone', '3 gates a week on your days', 'Levels, grades and ranks up to ' + FREE_RANK_CAP];
@@ -485,7 +491,7 @@ const PAID_PERKS: [string, string, boolean?][] = [
   ['The Red Gate', 'The hardest gate, new every week. Double XP.'],
   ['Ranks B, A and S', 'Keep climbing past rank ' + FREE_RANK_CAP + '.'],
   ['Any equipment, any time', 'Switch between none, home kit and gym.'],
-  ['A plan that adapts', 'Every gate adjusts to how your last ones went.', true],
+  ['Stat points', "Every Red Gate you clear lets you choose next week's focus."],
   ['Monthly progress report', 'Strength, streaks and body, side by side.', true],
 ];
 const PREMIUM_ON = { title: 'PREMIUM', tone: 'gold' as Tone, lines: ['Premium is active.', 'The Red Gate and every rank up to S are open.'] };
@@ -593,6 +599,33 @@ function PremiumWin({ g, profile, onPremium }: { g: ReturnType<typeof useGame>; 
       </Appear>
       )}
     </>
+  );
+}
+
+// A cleared Red Gate gives a stat point: spend it on next week's focus
+function StatPointCard({ profile, history, onProfile }: { profile: Profile; history: Rec[]; onProfile: (p: Profile) => void }) {
+  const t = useT();
+  const n = statPoints(history, profile), week = nextFocusWeek(profile, history, new Date());
+  const spend = (on: Focus) => { beep(1175, true); onProfile({ ...profile, focus: [...(profile.focus || []), { week, on }] }); };
+  return (
+    <Appear>
+      <Win hero title="STAT POINT" tone="gold">
+        <T glow style={{ textAlign: 'center', fontSize: 16 }}>{n > 1 ? 'You have ' + n + ' stat points.' : 'Red Gate cleared. You earned a stat point.'}</T>
+        <T muted style={{ textAlign: 'center', fontSize: 13, lineHeight: 20 }}>{week === ymd(weekStart(new Date())) ? "Choose this week's focus." : 'Choose the focus for the week of ' + parseYmd(week).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + '.'}</T>
+        <View style={{ gap: 8 }}>
+          {FOCUS.map(([k, label, stat, desc]) => (
+            <Pressable key={k} onPress={() => spend(k)} accessibilityRole="button" accessibilityLabel={'Focus ' + label}
+              style={({ pressed }) => ({ padding: 12, gap: 2, borderWidth: 1, borderColor: t.gold, backgroundColor: pressed ? 'rgba(255,200,80,0.15)' : 'rgba(0,0,0,0.3)' })}>
+              <Row style={{ justifyContent: 'space-between' }}>
+                <T style={{ fontFamily: F.semi, fontSize: 16, color: t.bright }}>{label}</T>
+                <Caps size={11} color={t.gold}>{stat + ' +' + FOCUS_BONUS}</Caps>
+              </Row>
+              <T muted style={{ fontSize: 13 }}>{desc}</T>
+            </Pressable>
+          ))}
+        </View>
+      </Win>
+    </Appear>
   );
 }
 

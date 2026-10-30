@@ -3,7 +3,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { WORKOUTS, QUESTS, XP, WorkoutKey, Item, workoutFor } from './data';
 import { beep } from './sound';
 import {
-  Profile, Rec, Session, store, rxFor, cdFor, itemSec, player, fmt, ymd, weeksIn, planWeek, todaysWorkout, ACH, missedWeighIns,
+  Profile, Rec, Session, store, rxFor, cdFor, itemSec, player, fmt, ymd, focusFor, weeksIn, planWeek, todaysWorkout, ACH, missedWeighIns,
 } from './logic';
 
 export type Notice = { title: string; lines: string[]; tone?: 'normal' | 'penalty' | 'secret' | 'gold' };
@@ -16,7 +16,7 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
   const todayW = todaysWorkout(today, profile);
   const gear = profile.gear || 'basic';
   const fit = profile.fit, kit = profile.kit;
-  const setup = { kit, noRun: profile.noRun };
+  const setup = { kit, noRun: profile.noRun, focus: focusFor(profile, today) };
   const wk = (k: WorkoutKey) => workoutFor(k, gear, fit, setup);
 
   const fresh = (key: string, w = week): Session => ({ v: 3, key, week: w, day: todayStr, startedAt: null, endedAt: null, items: {}, active: null, feel: 0 });
@@ -108,10 +108,10 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
     return Math.min(t, end.getTime() - 1);
   };
   async function addRec(rec: Rec) {
-    const before = player(history);
+    const before = player(history, profile.focus);
     const h = await store.addRec(rec);
     setHistory(h);
-    const after = player(h);
+    const after = player(h, profile.focus);
     return { before, after };
   }
   function rewardLines(key: string, before: { level: number }, after: { level: number }) {

@@ -1,12 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { XP, XP_PER_LEVEL, SECRETS, BAR_SECRETS, KB_SECRETS, WORKOUTS, ORDER, Item, Gear, Fit, Kit, hasBar } from './data';
+import { XP, XP_PER_LEVEL, SECRETS, BAR_SECRETS, KB_SECRETS, WORKOUTS, ORDER, Item, Gear, Fit, Kit, hasBar, Focus, FOCUS_BONUS } from './data';
 
 export type Rec = {
   key: string; workout: string; week: number; date: string; createdAt: number; totalSec: number;
   exercises: { name: string; rx: string; sec?: number; done: boolean }[];
   score: string; feel: number | null; hard: string; kg?: number;
 };
-export type Profile = { name: string; startDate: string; rank: string; days?: number[]; gear?: Gear; kit?: Kit[]; noRun?: boolean; fit?: Fit; premium?: boolean; trialSeen?: boolean; notify?: boolean; remindAt?: number };
+export type Profile = { name: string; startDate: string; rank: string; days?: number[]; gear?: Gear; kit?: Kit[]; noRun?: boolean; fit?: Fit; focus?: { week: string; on: Focus }[]; premium?: boolean; trialSeen?: boolean; notify?: boolean; remindAt?: number };
 export type ItemState = { sec: number; runningSince?: number | null; done?: boolean; sets?: boolean[]; rounds?: number; lastBeepMin?: number; endBeeped?: boolean };
 export type Session = {
   v: 3; key: string; week: number; day: string; startedAt: number | null; endedAt: number | null;
@@ -68,13 +68,14 @@ export function itemSec(s?: ItemState, now = Date.now()) { if (!s) return 0; ret
 
 // ---- the System
 export const onDay = (h: Rec[], d: Date, keys?: string[]) => { const s = d.toDateString(); return h.some(x => new Date(x.createdAt).toDateString() === s && (!keys || keys.includes(x.key))); };
-export function player(h: Rec[]) {
+export function player(h: Rec[], focus: { on: Focus }[] = []) {
   const c = (k: string) => h.filter(x => x.key === k).length;
+  const b = (f: Focus) => FOCUS_BONUS * focus.filter(x => x.on === f).length;
   const xp = Math.max(0, h.reduce((s, x) => s + (XP[x.key] || 0), 0));
   // Rising curve: level n -> n+1 costs 300 + 75*(n-1) XP
   let level = 1, need = XP_PER_LEVEL, into = xp;
   while (into >= need) { into -= need; level++; need = XP_PER_LEVEL + 75 * (level - 1); }
-  return { xp, level, into, need, str: 10 + 2 * (c('A') + c('B')) + c('D'), end: 10 + 2 * c('C') + 2 * c('D'), agi: 10 + c('Q') };
+  return { xp, level, into, need, str: 10 + 2 * (c('A') + c('B')) + c('D') + b('upper'), end: 10 + 2 * c('C') + 2 * c('D') + b('end'), agi: 10 + c('Q') + b('legs') };
 }
 const REAL = ['Q', 'A', 'B', 'C', 'D'];
 export function streak(h: Rec[], today: Date) {
@@ -100,6 +101,17 @@ export const secretFor = (d: Date, gear: Gear = 'basic', kit?: Kit[]) => {
   return pool[dayHash(d) % pool.length];
 };
 export function weekStart(d: Date) { const w = startOfDay(d); w.setDate(w.getDate() - w.getDay()); return w; }
+// Stat points: one per cleared Red Gate, minus the ones already spent on a week's focus
+export const statPoints = (h: Rec[], p: Profile) => h.filter(x => x.key === 'D').length - (p.focus || []).length;
+export const focusFor = (p: Profile, d: Date) => (p.focus || []).find(f => f.week === ymd(weekStart(d)))?.on;
+// a point is spent on the week after the last Red Gate (never a past week), or the first one after it with no focus yet
+export function nextFocusWeek(p: Profile, h: Rec[], today: Date) {
+  const last = Math.max(0, ...h.filter(x => x.key === 'D').map(x => x.createdAt));
+  const w = weekStart(new Date(last)); w.setDate(w.getDate() + 7);
+  if (w < weekStart(today)) w.setTime(weekStart(today).getTime());
+  while ((p.focus || []).some(f => f.week === ymd(w))) w.setDate(w.getDate() + 7);
+  return ymd(w);
+}
 // Full weeks since the player started that ended with no weigh-in and no penalty for it yet
 export function missedWeighIns(h: Rec[], p: Profile, today: Date) {
   const out: Date[] = [], w = weekStart(parseYmd(p.startDate));

@@ -3,7 +3,7 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { WORKOUTS, QUESTS, XP, WorkoutKey, Item, workoutFor } from './data';
 import { beep } from './sound';
 import {
-  Profile, Rec, Session, store, rxFor, cdFor, itemSec, player, fmt, ymd, weeksIn, planWeek, todaysWorkout, ACH, missedWeighIns,
+  Profile, Rec, Session, store, rxFor, cdFor, itemSec, player, fmt, ymd, focusFor, weeksIn, planWeek, todaysWorkout, ACH, missedWeighIns,
 } from './logic';
 
 export type Notice = { title: string; lines: string[]; tone?: 'normal' | 'penalty' | 'secret' | 'gold' };
@@ -15,7 +15,9 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
   const week = planWeek(weeksIn(profile, today));
   const todayW = todaysWorkout(today, profile);
   const gear = profile.gear || 'basic';
-  const wk = (k: WorkoutKey) => workoutFor(k, gear);
+  const fit = profile.fit, kit = profile.kit;
+  const setup = { kit, noRun: profile.noRun, focus: focusFor(profile, today) };
+  const wk = (k: WorkoutKey) => workoutFor(k, gear, fit, setup);
 
   const fresh = (key: string, w = week): Session => ({ v: 3, key, week: w, day: todayStr, startedAt: null, endedAt: null, items: {}, active: null, feel: 0 });
   const [s, setS] = useState<Session | null>(null);
@@ -76,12 +78,12 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
         if (!cur) return cur;
         let changed = false;
         if (cur.plankSince && cur.key === 'Q') {
-          const g = QUESTS.Q.goals(cur.week).find(x => x.timer);
+          const g = QUESTS.Q.goals(cur.week, fit).find(x => x.timer);
           if (g && (cur.counts?.[g.id] || 0) + Math.floor((Date.now() - cur.plankSince) / 1000) >= g.target) {
             cur.counts = { ...cur.counts, [g.id]: g.target }; cur.plankSince = null; beep(523, true); changed = true;
           }
         }
-        const w = WORKOUTS[cur.key as WorkoutKey] && workoutFor(cur.key as WorkoutKey, gear);
+        const w = WORKOUTS[cur.key as WorkoutKey] && workoutFor(cur.key as WorkoutKey, gear, fit, setup);
         if (w && cur.active) {
           const it = w.items.find(i => i.id === cur.active)!, st = cur.items[cur.active];
           const cd = cdFor(it, cur.week), sec = itemSec(st);
@@ -99,11 +101,17 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
     return () => clearInterval(id);
   }, []);
 
+  // A quest started before midnight and finished after it counts for the day it started,
+  // so finishing late never leaves that day looking missed (and never opens a penalty)
+  const countedAt = (cur: Session, t: number) => {
+    const end = new Date(cur.day); end.setDate(end.getDate() + 1);
+    return Math.min(t, end.getTime() - 1);
+  };
   async function addRec(rec: Rec) {
-    const before = player(history);
+    const before = player(history, profile.focus);
     const h = await store.addRec(rec);
     setHistory(h);
-    const after = player(h);
+    const after = player(h, profile.focus);
     return { before, after };
   }
   function rewardLines(key: string, before: { level: number }, after: { level: number }) {
@@ -161,7 +169,7 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
       const cur = s!;
       const rec: Rec = {
         key: cur.key, workout: W!.name, week: cur.week, date: ymd(new Date(cur.startedAt!)),
-        createdAt: cur.endedAt!, totalSec: Math.round((cur.endedAt! - cur.startedAt!) / 1000),
+        createdAt: countedAt(cur, cur.endedAt!), totalSec: Math.round((cur.endedAt! - cur.startedAt!) / 1000),
         exercises: W!.items.map(i => ({ name: i.name, rx: rxFor(i, cur.week), sec: Math.round(itemSec(cur.items[i.id])), done: !!cur.items[i.id]?.done })),
         score: actions.autoScore(), feel: cur.feel || null, hard: hard.trim(),
       };
@@ -172,8 +180,8 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
     },
     saveQuest: async () => {
       const cur = s!, Qd = QUESTS[cur.key as 'Q' | 'P'];
-      const goals = cur.key === 'Q' ? QUESTS.Q.goals(cur.week) : QUESTS.P.goals(gear);
-      const rec: Rec = { key: cur.key, workout: Qd.title, week: cur.week, date: ymd(new Date()), createdAt: Date.now(), totalSec: 0,
+      const goals = cur.key === 'Q' ? QUESTS.Q.goals(cur.week, fit) : QUESTS.P.goals(gear, kit);
+      const rec: Rec = { key: cur.key, workout: Qd.title, week: cur.week, date: cur.day ? ymd(new Date(cur.day)) : ymd(new Date()), createdAt: countedAt(cur, Date.now()), totalSec: 0,
         exercises: goals.map(g => ({ name: g.label, rx: String(g.target), done: true })), score: '', feel: null, hard: '' };
       const { before, after } = await addRec(rec);
       update({ ...cur, saved: true });
@@ -192,5 +200,5 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
     },
   };
 
-  return { s, W, wk, gear, running, week, todayW, today, actions, notices, dismiss, notify };
+  return { s, W, wk, gear, kit, fit, running, week, todayW, today, actions, notices, dismiss, notify };
 }

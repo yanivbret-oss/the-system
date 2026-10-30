@@ -37,7 +37,8 @@ export function QuestScreen({ g, onBack }: { g: Game; onBack: () => void }) {
   }, [s.active, s.endedAt]);
   return (
     <View style={{ flex: 1 }}>
-      <Row style={{ paddingHorizontal: 16, paddingTop: 10, justifyContent: 'space-between' }}>
+      {/* once the timer bar is pinned, the back row shares its dark band so nothing shows between them */}
+      <Row style={{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4, justifyContent: 'space-between', backgroundColor: stuck && !isCounter ? 'rgb(1, 4, 9)' : 'transparent' }}>
         <Pressable onPress={onBack} disabled={g.running} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back" style={{ opacity: g.running ? 0.3 : 1 }}>
           <Caps size={12}>‹ Back</Caps>
         </Pressable>
@@ -69,7 +70,7 @@ function SessionBar({ g, stuck }: { g: Game; stuck: boolean }) {
   const t = useT(), s = g.s!, W = g.W!;
   const done = W.items.filter(i => s.items[i.id]?.done).length;
   return (
-    <View style={{ backgroundColor: stuck ? 'rgba(1, 4, 9, 0.94)' : 'transparent', paddingVertical: 10, marginHorizontal: -16, paddingHorizontal: 16, borderBottomWidth: 1, borderColor: stuck ? t.line : 'transparent', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+    <View style={{ backgroundColor: stuck ? 'rgb(1, 4, 9)' : 'transparent', paddingVertical: 10, marginHorizontal: -16, paddingHorizontal: 16, borderBottomWidth: 1, borderColor: stuck ? t.line : 'transparent', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
       <View>
         <Num size={30}>{s.startedAt ? fmt(((s.endedAt || Date.now()) - s.startedAt) / 1000) : '00:00'}</Num>
         <Row style={{ gap: 3, marginTop: 4 }}>
@@ -190,7 +191,7 @@ function ItemCard({ g, it, s }: { g: Game; it: Item; s: Session }) {
 function CounterQuest({ g }: { g: Game }) {
   const t = useT(), s = g.s!;
   const pen = s.key === 'P', Qd = QUESTS[s.key as 'Q' | 'P'];
-  const goals = pen ? QUESTS.P.goals(g.gear) : QUESTS.Q.goals(s.week);
+  const goals = pen ? QUESTS.P.goals(g.gear, g.kit) : QUESTS.Q.goals(s.week, g.fit);
   const count = (id: string, timer?: boolean) => { const c = s.counts?.[id] || 0; return timer && s.plankSince ? c + Math.floor((Date.now() - s.plankSince) / 1000) : c; };
   const all = goals.every(x => count(x.id, x.timer) >= x.target);
   const [how, setHow] = useState<string | null>(null);

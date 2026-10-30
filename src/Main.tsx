@@ -3,8 +3,8 @@ import { View, Text, TextInput, Pressable, ScrollView } from 'react-native';
 import Svg, { Polyline, Rect, Path, Circle } from 'react-native-svg';
 import { Win, T, Caps, Num, Btn, Row, Divider, Appear, Ring, Meter, GoalHeading, useT, Tone } from './ui';
 import { F } from './theme';
-import { WORKOUTS, QUESTS, XP, DAYS, DAY_LETTERS, KEY_NAMES, GEAR, Gear, fitLevel } from './data';
-import { FitForm } from './Onboarding';
+import { WORKOUTS, QUESTS, XP, DAYS, DAY_LETTERS, KEY_NAMES, GEAR, Gear, fitLevel, FULL_KIT } from './data';
+import { FitForm, KitPicker } from './Onboarding';
 import {
   Profile, Rec, player, streak, onDay, penaltyActive, secretFor, weekStart, weights, ACH, fmt, rxFor, QUEST_KEYS, startOfDay, parseYmd, todaysWorkout, isFirstDay, gatesFor, gateDay, gradeFor, isPremium, trialLeft, RANKS, FREE_RANK_CAP, DEFAULT_DAYS, TRIAL_DAYS, store,
 } from './logic';
@@ -138,7 +138,7 @@ function QuestTab({ g, profile, history, onProfile, open, onStatus, onWeigh }: {
   const qKey = todayW || 'Q';
   const qDone = onDay(history, today, QUEST_KEYS);
   const penalty = penaltyActive(history, profile, today);
-  const secret = secretFor(today, g.gear);
+  const secret = secretFor(today, g.gear, g.kit);
   const premium = isPremium(profile, today);
   const showSecret = !!secret && !onDay(history, today, ['S']);
   const ws = weights(history);
@@ -180,7 +180,7 @@ function QuestTab({ g, profile, history, onProfile, open, onStatus, onWeigh }: {
             <Win hero title="PENALTY" tone="penalty">
               <T style={{ textAlign: 'center' }}>{"Yesterday's daily quest was not completed."}</T>
               <T style={{ textAlign: 'center', color: t.warn, fontFamily: F.semi }}>You have been moved to the Penalty Zone.</T>
-              <T muted style={{ textAlign: 'center', fontSize: 13 }}>{QUESTS.P.goals(g.gear).map(x => x.target + ' ' + x.label.toLowerCase()).join(' and ') + ". Clear it to unlock today's quests."}</T>
+              <T muted style={{ textAlign: 'center', fontSize: 13 }}>{QUESTS.P.goals(g.gear, g.kit).map(x => x.target + ' ' + x.label.toLowerCase()).join(' and ') + ". Clear it to unlock today's quests."}</T>
               <Btn danger big label="Enter penalty zone" onPress={() => open('P')} />
             </Win>
           </Appear>
@@ -633,6 +633,7 @@ function Settings({ g, profile, onProfile }: { g: ReturnType<typeof useGame>; pr
             </Pressable>
           ))}
         </View>
+        <KitPicker gear={gear} kit={profile.kit || FULL_KIT} noRun={!!profile.noRun} onChange={(kit, noRun) => onProfile({ ...profile, kit, noRun })} />
         <Divider />
         <Row style={{ justifyContent: 'space-between' }}>
           <Caps size={10} glow={false} style={{ color: t.muted }}>Fitness test</Caps>

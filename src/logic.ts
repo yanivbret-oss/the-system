@@ -1,12 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { XP, XP_PER_LEVEL, SECRETS, GEAR_SECRETS, WORKOUTS, ORDER, Item, Gear, Fit } from './data';
+import { XP, XP_PER_LEVEL, SECRETS, BAR_SECRETS, KB_SECRETS, WORKOUTS, ORDER, Item, Gear, Fit, Kit, hasBar } from './data';
 
 export type Rec = {
   key: string; workout: string; week: number; date: string; createdAt: number; totalSec: number;
   exercises: { name: string; rx: string; sec?: number; done: boolean }[];
   score: string; feel: number | null; hard: string; kg?: number;
 };
-export type Profile = { name: string; startDate: string; rank: string; days?: number[]; gear?: Gear; fit?: Fit; premium?: boolean; trialSeen?: boolean; notify?: boolean; remindAt?: number };
+export type Profile = { name: string; startDate: string; rank: string; days?: number[]; gear?: Gear; kit?: Kit[]; noRun?: boolean; fit?: Fit; premium?: boolean; trialSeen?: boolean; notify?: boolean; remindAt?: number };
 export type ItemState = { sec: number; runningSince?: number | null; done?: boolean; sets?: boolean[]; rounds?: number; lastBeepMin?: number; endBeeped?: boolean };
 export type Session = {
   v: 3; key: string; week: number; day: string; startedAt: number | null; endedAt: number | null;
@@ -93,9 +93,10 @@ export function penaltyActive(h: Rec[], p: Profile, today: Date) {
 }
 
 function dayHash(d: Date) { const x = d.getFullYear() * 400 + d.getMonth() * 32 + d.getDate(); return (Math.imul(x, 2654435761) >>> 0) % 1000; }
-export const secretFor = (d: Date, gear: Gear = 'basic') => {
+export const secretFor = (d: Date, gear: Gear = 'basic', kit?: Kit[]) => {
   if (dayHash(d) % 9 !== 0) return null;
-  const pool = gear === 'none' ? SECRETS.filter((_, i) => !GEAR_SECRETS.includes(i)) : SECRETS;
+  const kb = gear === 'gym' || (gear === 'basic' && (!kit || kit.includes('kb')));
+  const pool = SECRETS.filter((_, i) => !(BAR_SECRETS.includes(i) && !hasBar(gear, kit)) && !(KB_SECRETS.includes(i) && !kb));
   return pool[dayHash(d) % pool.length];
 };
 export function weekStart(d: Date) { const w = startOfDay(d); w.setDate(w.getDate() - w.getDay()); return w; }

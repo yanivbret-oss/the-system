@@ -37,7 +37,7 @@ export default function App() {
               <Main profile={profile} history={history} setHistory={setHistory} onRedGate={setRed} onProfile={p => { store.saveProfile(p); setProfile(p); }} />
             ) : (
               <View style={{ flex: 1, justifyContent: 'center', padding: 20 }}>
-                <Onboarding onDone={(name, days, gear, fit) => { const p = { name, startDate: ymd(new Date()), rank: 'E', days, gear, fit }; store.saveProfile(p); setProfile(p); }} />
+                <Onboarding onDone={(name, days, gear, fit, setup) => { const p = { name, startDate: ymd(new Date()), rank: 'E', days, gear, fit, ...setup }; store.saveProfile(p); setProfile(p); }} />
               </View>
             )}
           </View>

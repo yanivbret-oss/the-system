@@ -1,12 +1,35 @@
 import { useState } from 'react';
 import { View, TextInput, Pressable } from 'react-native';
 import { Win, T, Btn, Row, Caps, Appear, useT } from './ui';
-import { DAYS, GEAR, Gear, Fit } from './data';
+import { DAYS, GEAR, Gear, Fit, Kit, KIT, FULL_KIT, Setup } from './data';
 import { DEFAULT_DAYS } from './logic';
 import { F } from './theme';
 import { beep } from './sound';
 
 // The awakening: the System offers to make you a Player, then asks your name
+// What a home player owns, and whether they run; every gate is rebuilt around it
+export function KitPicker({ gear, kit, noRun, onChange }: { gear: Gear; kit: Kit[]; noRun: boolean; onChange: (kit: Kit[], noRun: boolean) => void }) {
+  const t = useT();
+  const flip = (k: Kit) => onChange(kit.includes(k) ? kit.filter(x => x !== k) : [...kit, k], noRun);
+  return (
+    <View style={{ gap: 8 }}>
+      {gear === 'basic' ? (
+        <>
+          <Caps size={10} glow={false} style={{ color: t.muted }}>What do you have?</Caps>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {KIT.map(([k, label]) => <Btn key={k} small label={label} on={kit.includes(k)} onPress={() => flip(k)} />)}
+          </View>
+        </>
+      ) : null}
+      <Caps size={10} glow={false} style={{ color: t.muted }}>Running</Caps>
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        <Btn small label="I run" on={!noRun} onPress={() => onChange(kit, false)} style={{ flex: 1 }} />
+        <Btn small label="Jumping jacks instead" on={noRun} onPress={() => onChange(kit, true)} style={{ flex: 1.6 }} />
+      </View>
+    </View>
+  );
+}
+
 // Fitness test: the most reps in a row of each base movement; the System scales the plan to it
 export function FitForm({ gear, init, label = 'Confirm', onDone }: { gear: Gear; init?: Fit; label?: string; onDone: (f: Fit) => void }) {
   const t = useT();
@@ -30,7 +53,7 @@ export function FitForm({ gear, init, label = 'Confirm', onDone }: { gear: Gear;
   );
 }
 
-export function Onboarding({ onDone }: { onDone: (name: string, days: number[], gear: Gear, fit: Fit) => void }) {
+export function Onboarding({ onDone }: { onDone: (name: string, days: number[], gear: Gear, fit: Fit, setup: Setup) => void }) {
   const t = useT();
   const [step, setStep] = useState<'offer' | 'refused' | 'rules' | 'name' | 'days' | 'gear' | 'fit'>('offer');
   const [name, setName] = useState('');
@@ -38,6 +61,8 @@ export function Onboarding({ onDone }: { onDone: (name: string, days: number[], 
   const [days, setDays] = useState<number[]>(DEFAULT_DAYS);
   const nDays = days.length, daysOk = nDays === 3 || nDays === 4;
   const [gear, setGear] = useState<Gear | null>(null);
+  const [kit, setKit] = useState<Kit[]>(FULL_KIT);
+  const [noRun, setNoRun] = useState(false);
 
   if (step === 'fit' && gear) {
     return (
@@ -45,7 +70,7 @@ export function Onboarding({ onDone }: { onDone: (name: string, days: number[], 
         <Win title="FITNESS TEST">
           <T glow style={{ textAlign: 'center', fontSize: 16 }}>How many can you do in a row?</T>
           <T muted style={{ textAlign: 'center', fontSize: 13, lineHeight: 20 }}>Clean reps, no rest. The System sets your reps from this, so your first gate is hard but possible.</T>
-          <FitForm gear={gear} onDone={f => onDone(name.trim(), days, gear, f)} />
+          <FitForm gear={gear} onDone={f => onDone(name.trim(), days, gear, f, { kit: gear === 'basic' ? kit : undefined, noRun })} />
         </Win>
       </Appear>
     );
@@ -69,6 +94,7 @@ export function Onboarding({ onDone }: { onDone: (name: string, days: number[], 
               );
             })}
           </View>
+          {gear ? <KitPicker gear={gear} kit={kit} noRun={noRun} onChange={(k, n) => { beep(740); setKit(k); setNoRun(n); }} /> : null}
           <Btn primary big label="Next" disabled={!gear} onPress={() => { beep(880); setStep('fit'); }} />
         </Win>
       </Appear>

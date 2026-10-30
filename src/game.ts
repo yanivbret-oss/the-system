@@ -15,8 +15,9 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
   const week = planWeek(weeksIn(profile, today));
   const todayW = todaysWorkout(today, profile);
   const gear = profile.gear || 'basic';
-  const fit = profile.fit;
-  const wk = (k: WorkoutKey) => workoutFor(k, gear, fit);
+  const fit = profile.fit, kit = profile.kit;
+  const setup = { kit, noRun: profile.noRun };
+  const wk = (k: WorkoutKey) => workoutFor(k, gear, fit, setup);
 
   const fresh = (key: string, w = week): Session => ({ v: 3, key, week: w, day: todayStr, startedAt: null, endedAt: null, items: {}, active: null, feel: 0 });
   const [s, setS] = useState<Session | null>(null);
@@ -82,7 +83,7 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
             cur.counts = { ...cur.counts, [g.id]: g.target }; cur.plankSince = null; beep(523, true); changed = true;
           }
         }
-        const w = WORKOUTS[cur.key as WorkoutKey] && workoutFor(cur.key as WorkoutKey, gear, fit);
+        const w = WORKOUTS[cur.key as WorkoutKey] && workoutFor(cur.key as WorkoutKey, gear, fit, setup);
         if (w && cur.active) {
           const it = w.items.find(i => i.id === cur.active)!, st = cur.items[cur.active];
           const cd = cdFor(it, cur.week), sec = itemSec(st);
@@ -179,7 +180,7 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
     },
     saveQuest: async () => {
       const cur = s!, Qd = QUESTS[cur.key as 'Q' | 'P'];
-      const goals = cur.key === 'Q' ? QUESTS.Q.goals(cur.week, fit) : QUESTS.P.goals(gear);
+      const goals = cur.key === 'Q' ? QUESTS.Q.goals(cur.week, fit) : QUESTS.P.goals(gear, kit);
       const rec: Rec = { key: cur.key, workout: Qd.title, week: cur.week, date: cur.day ? ymd(new Date(cur.day)) : ymd(new Date()), createdAt: countedAt(cur, Date.now()), totalSec: 0,
         exercises: goals.map(g => ({ name: g.label, rx: String(g.target), done: true })), score: '', feel: null, hard: '' };
       const { before, after } = await addRec(rec);
@@ -199,5 +200,5 @@ export function useGame(profile: Profile, history: Rec[], setHistory: (h: Rec[])
     },
   };
 
-  return { s, W, wk, gear, fit, running, week, todayW, today, actions, notices, dismiss, notify };
+  return { s, W, wk, gear, kit, fit, running, week, todayW, today, actions, notices, dismiss, notify };
 }
